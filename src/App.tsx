@@ -220,7 +220,8 @@ export function App() {
     if (!el) return p
     const w = Math.min(id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app, el.clientWidth)
     return {
-      x: Math.min(Math.max(p.x, 0), el.clientWidth - w),
+      // windows may slide over the icon column, down to the same 12px margin the icons keep
+      x: Math.min(Math.max(p.x, 12 - el.offsetLeft), el.clientWidth - w),
       y: Math.min(Math.max(p.y, 0), el.clientHeight - 48),
     }
   }
