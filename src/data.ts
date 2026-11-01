@@ -6,7 +6,7 @@ export type Media =
   | { kind: "stage"; shots: Shot[]; layout: "row" | "stack" }
   | { kind: "desktop"; app: Shot; notification: Shot }
 
-export type Shot = { src: string; alt: string }
+export type Shot = { src: string; alt: string; width: number; height: number }
 
 export type Project = {
   id: string
@@ -16,14 +16,36 @@ export type Project = {
   platforms: Platform[]
   tags: string[]
   repo: string
+  /** live site, when the project has one */
+  site?: string
   icon: string
   media: Media
 }
 
-const shot = (file: string, alt: string): Shot => ({
-  src: `${import.meta.env.BASE_URL}shots/${file}.webp`,
-  alt,
-})
+/** Pixel sizes of public/shots/*.webp, so placeholders take each image's exact shape before it loads. */
+const SIZES: Record<string, [width: number, height: number]> = {
+  "capital-crm-dashboard": [1440, 900],
+  "capital-crm-leads": [1440, 900],
+  gokapi: [1190, 790],
+  "kalender-cuti-calendar": [1440, 900],
+  "kalender-cuti-home": [1440, 900],
+  "lyrics-float": [502, 199],
+  "lyrics-float-settings": [380, 620],
+  "plasma-wave-compact": [720, 60],
+  "plasma-wave-full": [480, 656],
+  "pray-time": [592, 800],
+  "pray-time-notification": [608, 238],
+  "spendr-home": [480, 1219],
+  "spendr-reports": [480, 1219],
+  "tabquest-home": [1440, 900],
+  "viewport-find": [1280, 800],
+  "vision-api": [1440, 900],
+}
+
+const shot = (file: string, alt: string): Shot => {
+  const [width, height] = SIZES[file]
+  return { src: `${import.meta.env.BASE_URL}shots/${file}.webp`, alt, width, height }
+}
 
 export const PLATFORM_LABEL: Record<Platform, string> = {
   android: "Android",
@@ -62,6 +84,25 @@ export const projects: Project[] = [
     repo: "https://github.com/uzuki-P/tabquest",
     icon: "receipt_long",
     media: { kind: "window", shot: shot("tabquest-home", "TabQuest month view with unpaid splits and the player leaderboard") },
+  },
+  {
+    id: "kalender-cuti",
+    name: "Kalender Cuti",
+    blurb: "Plan your days off around Indonesia’s holidays",
+    description:
+      "A holiday planner for Indonesia. Month and year calendars of national holidays and collective leave for 2026 and 2027, a holiday search, details for every date, and a long-weekend finder that shows which leave days join a holiday to a weekend. Each year is a prerendered static page.",
+    platforms: ["web"],
+    tags: ["React", "Vite", "M3 Expressive"],
+    repo: "https://github.com/uzuki-P/kalender-cuti",
+    site: "https://kalender-cuti.vercel.app/",
+    icon: "calendar_month",
+    media: {
+      kind: "pair",
+      shots: [
+        shot("kalender-cuti-home", "Kalender Cuti home with the next holiday on a tear-off calendar sheet"),
+        shot("kalender-cuti-calendar", "Kalender Cuti month view for November 2026 beside the date details"),
+      ],
+    },
   },
   {
     id: "spendr",

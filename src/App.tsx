@@ -28,7 +28,8 @@ const APPS: { id: AppId; name: string; icon: string }[] = [
 const appOf = (id: AppId) => APPS.find((a) => a.id === id)!
 
 const WINDOW_WIDTH = { about: 440, app: 600 }
-const LG = "(min-width: 1024px)"
+/** Below this width (phones, small tablets) the page is a home screen instead of a desktop. */
+const DESKTOP = "(min-width: 1024px)"
 
 function reducedMotion() {
   return matchMedia("(prefers-reduced-motion: reduce)").matches
@@ -87,12 +88,12 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
       }}
       className="lightbox fixed inset-0 m-0 grid h-dvh max-h-none w-dvw max-w-none place-items-center bg-[#0d070b]/92 p-4 text-white backdrop:bg-transparent sm:p-10"
     >
-      <figure className="pointer-events-none grid max-h-full justify-items-center gap-3">
-        <img
+      <figure className="pointer-events-none grid max-h-full w-full justify-items-center gap-3">
+        <ShotImage
           key={shot.src}
-          src={shot.src}
-          alt={shot.alt}
-          className="pointer-events-auto max-h-[calc(100dvh-8rem)] max-w-full rounded-lg object-contain shadow-[0_30px_80px_rgba(0,0,0,.6)]"
+          shot={shot}
+          maxHeight="(100dvh - 8rem)"
+          className="pointer-events-auto rounded-lg shadow-[0_30px_80px_rgba(0,0,0,.6)]"
         />
         <figcaption className="pointer-events-auto max-w-2xl text-center text-[14px] text-white/75">
           {shot.alt}
@@ -132,10 +133,62 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
   )
 }
 
+/**
+ * A screenshot in a box of its exact shape, with a shimmering skeleton until it loads, so nothing
+ * collapses or jumps while it downloads. The box fits like object-contain: no wider than its
+ * container or the image's own width, and no taller than `maxHeight`.
+ */
+function ShotImage({
+  shot,
+  maxHeight,
+  lazy,
+  className,
+  children,
+}: {
+  shot: Shot
+  maxHeight: string
+  lazy?: boolean
+  className?: string
+  children?: React.ReactNode
+}) {
+  const img = useRef<HTMLImageElement>(null)
+  const [loaded, setLoaded] = useState(false)
+  // an image already in the cache can finish before React attaches onLoad
+  useEffect(() => {
+    if (img.current?.complete && img.current.naturalWidth) setLoaded(true)
+  }, [])
+  return (
+    <div
+      className={cn("relative overflow-hidden", className)}
+      style={{
+        aspectRatio: `${shot.width} / ${shot.height}`,
+        width: `min(100%, ${shot.width}px, calc(${maxHeight} * ${shot.width / shot.height}))`,
+      }}
+    >
+      {!loaded && (
+        <div aria-hidden className="skeleton absolute inset-0 grid place-items-center text-white/25">
+          <Icon name="image" size={32} />
+        </div>
+      )}
+      <img
+        ref={img}
+        src={shot.src}
+        alt={shot.alt}
+        width={shot.width}
+        height={shot.height}
+        loading={lazy ? "lazy" : undefined}
+        onLoad={() => setLoaded(true)}
+        className={cn("absolute inset-0 size-full object-contain transition-opacity duration-300", !loaded && "opacity-0")}
+      />
+      {children}
+    </div>
+  )
+}
+
 /* ---------- desktop ---------- */
 
 export function App() {
-  const wide = useMedia(LG)
+  const wide = useMedia(DESKTOP)
   const desk = useRef<HTMLDivElement>(null)
   const [icons, setIcons] = useState<HTMLElement | null>(null)
   const iconsWidth = useWidth(icons)
@@ -158,14 +211,14 @@ export function App() {
     const left = Math.max(0, Math.min(w * 0.02, 32))
     setPos({
       about: { x: left, y: 16 },
-      onecore: { x: Math.max(left + 48, Math.min(w - WINDOW_WIDTH.app, left + WINDOW_WIDTH.about + 40)), y: 64 },
+      onecore: { x: Math.max(0, Math.min(w - WINDOW_WIDTH.app, left + WINDOW_WIDTH.about + 40)), y: 64 },
     })
   }, [iconsWidth, wide])
 
   const clamp = (id: AppId, p: Pos): Pos => {
     const el = desk.current
     if (!el) return p
-    const w = id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app
+    const w = Math.min(id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app, el.clientWidth)
     return {
       x: Math.min(Math.max(p.x, 120 - w), el.clientWidth - 120),
       y: Math.min(Math.max(p.y, 0), el.clientHeight - 48),
@@ -444,7 +497,7 @@ function Window({
       className={cn(
         leaving === "close" ? "window-close" : leaving === "minimize" ? "window-minimize" : "window-in",
         leaving && "pointer-events-none",
-        "absolute top-(--y) left-(--x) flex max-h-[calc(100%-var(--y))] w-(--w) flex-col overflow-hidden rounded-xl bg-(--win) text-(--ink) outline-none",
+        "absolute top-(--y) left-(--x) flex max-h-[calc(100%-var(--y))] w-[min(var(--w),100%)] flex-col overflow-hidden rounded-xl bg-(--win) text-(--ink) outline-none",
         active
           ? "shadow-[0_28px_70px_rgba(0,0,0,.45)] ring-1 ring-[#E91E63]/60"
           : "shadow-[0_14px_36px_rgba(0,0,0,.3)] ring-1 ring-(--win-ring)"
@@ -530,7 +583,12 @@ function WindowBody({ id }: { id: AppId }) {
             </li>
           ))}
         </ul>
-        <LinkButton href={p.repo}>{p.repo.replace("https://github.com/", "")}</LinkButton>
+        <div className="flex flex-wrap gap-2">
+          {p.site && <LinkButton href={p.site}>Open {new URL(p.site).host}</LinkButton>}
+          <LinkButton href={p.repo} quiet={!!p.site}>
+            {p.repo.replace("https://github.com/", "")}
+          </LinkButton>
+        </div>
       </div>
     </>
   )
@@ -575,12 +633,16 @@ function Meta({ children }: { children: React.ReactNode }) {
   return <p className="mb-1 font-mono text-[12px] text-(--muted)">{children}</p>
 }
 
-function LinkButton({ href, children }: { href: string; children: React.ReactNode }) {
+/** An external link button; `quiet` is the secondary style, for a second link beside the main one. */
+function LinkButton({ href, quiet, children }: { href: string; quiet?: boolean; children: React.ReactNode }) {
   return (
     <a
       href={href}
       {...EXTERNAL}
-      className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2185B] px-3.5 py-2 text-[14px] font-medium text-white hover:bg-[#AD1457]"
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[14px] font-medium",
+        quiet ? "bg-(--chip) hover:bg-(--chip-hover)" : "bg-[#C2185B] text-white hover:bg-[#AD1457]"
+      )}
     >
       {children} <Icon name="arrow_outward" size={16} />
     </a>
@@ -597,15 +659,16 @@ function Shots({ shots }: { shots: Shot[] }) {
           type="button"
           onClick={() => preview({ shots, index })}
           aria-label={`View full size: ${s.alt}`}
-          className="group relative min-w-0 cursor-zoom-in rounded-md"
+          className="group flex min-w-0 flex-1 cursor-zoom-in justify-center rounded-md"
         >
-          <img src={s.src} alt="" loading="lazy" className="max-h-72 rounded-md object-contain" />
-          <span
-            aria-hidden
-            className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
-          >
-            <Icon name="open_in_full" size={16} />
-          </span>
+          <ShotImage shot={{ ...s, alt: "" }} maxHeight="18rem" lazy className="rounded-md">
+            <span
+              aria-hidden
+              className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+            >
+              <Icon name="open_in_full" size={16} />
+            </span>
+          </ShotImage>
         </button>
       ))}
     </div>
