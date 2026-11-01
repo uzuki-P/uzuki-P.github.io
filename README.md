@@ -19,6 +19,8 @@ Wave Player pill, and a Lyrics Float pill sings it in the corner. React 19, Vite
   is that library's source and is no longer used by the page
 - `public/favicon.svg`: the glasses avatar, also used in the page and taskbar
 - `public/shots/`: screenshots as WebP
+- `public/videos/`: each app's deep-dive MP4 and WebP poster, rendered in `../portfolio-deep-dives`
+  (`just render <app>` there, then copy `out/<app>.mp4` here and update `seconds` in `src/data.ts`)
 - `tools/`: scripts that produced some screenshots
 
 Colors: Material pink-500 `#E91E63` lights the wallpaper; buttons and links use pink-700

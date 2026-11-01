@@ -8,6 +8,9 @@ export type Media =
 
 export type Shot = { src: string; alt: string; width: number; height: number }
 
+/** An animated deep dive in public/videos/: 1920×1080 MP4 with a WebP poster of the same name. */
+export type Video = { src: string; poster: string; seconds: number }
+
 export type Project = {
   id: string
   name: string
@@ -20,6 +23,7 @@ export type Project = {
   site?: string
   icon: string
   media: Media
+  video: Video
 }
 
 /** Pixel sizes of public/shots/*.webp, so placeholders take each image's exact shape before it loads. */
@@ -47,6 +51,12 @@ const shot = (file: string, alt: string): Shot => {
   return { src: `${import.meta.env.BASE_URL}shots/${file}.webp`, alt, width, height }
 }
 
+const video = (id: string, seconds: number): Video => ({
+  src: `${import.meta.env.BASE_URL}videos/${id}.mp4`,
+  poster: `${import.meta.env.BASE_URL}videos/${id}.webp`,
+  seconds,
+})
+
 export const PLATFORM_LABEL: Record<Platform, string> = {
   android: "Android",
   desktop: "Desktop",
@@ -59,6 +69,7 @@ export const featured = {
   icon: "support_agent",
   role: "Lead Frontend Developer · since Jan 2026",
   url: "https://onecorecrm.com",
+  video: video("onecore", 90),
   description:
     "A CRM that brings together leads, customers, PBX calling, an auto-dialer, WhatsApp and omnichannel inboxes, ads reporting and billing. I lead the frontend architecture: 23 domain modules, 118 lazy-loaded routes, an in-browser SIP/WebRTC softphone, English and Indonesian translations, and Playwright suites built on schema-checked mocks.",
   shots: [
@@ -83,6 +94,7 @@ export const projects: Project[] = [
     tags: ["TanStack Start", "React", "Drizzle", "libSQL"],
     repo: "https://github.com/uzuki-P/tabquest",
     icon: "receipt_long",
+    video: video("tabquest", 66),
     media: { kind: "window", shot: shot("tabquest-home", "TabQuest month view with unpaid splits and the player leaderboard") },
   },
   {
@@ -96,6 +108,7 @@ export const projects: Project[] = [
     repo: "https://github.com/uzuki-P/kalender-cuti",
     site: "https://kalender-cuti.vercel.app/",
     icon: "calendar_month",
+    video: video("kalender-cuti", 57),
     media: {
       kind: "pair",
       shots: [
@@ -114,6 +127,7 @@ export const projects: Project[] = [
     tags: ["Kotlin", "Jetpack Compose", "Material 3"],
     repo: "https://github.com/uzuki-P/spendr-kt",
     icon: "account_balance_wallet",
+    video: video("spendr", 85),
     media: {
       kind: "pair",
       shots: [
@@ -132,6 +146,7 @@ export const projects: Project[] = [
     tags: ["Compose Desktop", "D-Bus", "SQLite"],
     repo: "https://github.com/uzuki-P/pray-time",
     icon: "schedule",
+    video: video("pray-time", 80),
     media: {
       kind: "desktop",
       app: shot("pray-time", "Pray Time popup with the next-prayer countdown and today’s checklist"),
@@ -148,6 +163,7 @@ export const projects: Project[] = [
     tags: ["Kotlin", "M3 Expressive", "WorkManager"],
     repo: "https://github.com/uzuki-P/gokapi-app",
     icon: "cloud_upload",
+    video: video("gokapi", 74),
     media: { kind: "window", shot: shot("gokapi", "Gokapi desktop client listing recent files with filters and an upload button") },
   },
   {
@@ -160,6 +176,7 @@ export const projects: Project[] = [
     tags: ["Compose Desktop", "MPRIS", "Wayland"],
     repo: "https://github.com/uzuki-P/lyrics-float",
     icon: "lyrics",
+    video: video("lyrics-float", 74),
     media: {
       kind: "stage",
       layout: "row",
@@ -179,6 +196,7 @@ export const projects: Project[] = [
     tags: ["QML", "Plasma 6", "CAVA"],
     repo: "https://github.com/uzuki-P/plasma-wave-player",
     icon: "graphic_eq",
+    video: video("wave-player", 80),
     media: {
       kind: "stage",
       layout: "stack",
@@ -198,6 +216,7 @@ export const projects: Project[] = [
     tags: ["Bun", "Effect", "Solid"],
     repo: "https://github.com/uzuki-P/vision-api",
     icon: "visibility",
+    video: video("vision-api", 73),
     media: { kind: "window", shot: shot("vision-api", "Vision API playground with an uploaded image and the model’s JSON result") },
   },
   {
@@ -210,6 +229,7 @@ export const projects: Project[] = [
     tags: ["Chrome extension", "CSS Highlights"],
     repo: "https://github.com/uzuki-P/viewport-find",
     icon: "find_in_page",
+    video: video("viewport-find", 73),
     media: { kind: "window", shot: shot("viewport-find", "Viewport Find bar highlighting matches for “state” on a page") },
   },
 ]

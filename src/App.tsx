@@ -2,7 +2,7 @@ import { createContext, use, useEffect, useLayoutEffect, useRef, useState } from
 
 import { Icon } from "@/components/m3e/icon"
 import { cn } from "@/lib/utils"
-import { featured, PLATFORM_LABEL, projects, shotsOf, type Shot } from "./data"
+import { featured, PLATFORM_LABEL, projects, shotsOf, type Shot, type Video } from "./data"
 import { LyricsPill } from "./Lyrics"
 import { ThemeMenu } from "./Theme"
 import { useTooltips } from "./Tooltip"
@@ -581,6 +581,7 @@ function WindowBody({ id }: { id: AppId }) {
               </div>
             ))}
           </dl>
+          <DeepDive video={featured.video} name={featured.name} />
           <LinkButton href={featured.url}>Visit onecorecrm.com</LinkButton>
           <p className="mt-3 text-[12px] text-(--muted)">Private code · screenshots use made-up data</p>
         </div>
@@ -603,6 +604,7 @@ function WindowBody({ id }: { id: AppId }) {
             </li>
           ))}
         </ul>
+        <DeepDive video={p.video} name={p.name} />
         <div className="flex flex-wrap gap-2">
           {p.site && <LinkButton href={p.site}>Visit {new URL(p.site).host}</LinkButton>}
           <LinkButton href={p.repo} source>
@@ -670,6 +672,28 @@ function LinkButton({ href, source, children }: { href: string; source?: boolean
       {source && <Icon name="code" size={16} />}
       {children} <Icon name="arrow_outward" size={16} />
     </a>
+  )
+}
+
+/** The app's animated deep dive. Nothing downloads until play, so closed windows cost one small poster. */
+function DeepDive({ video, name }: { video: Video; name: string }) {
+  const length = `${Math.floor(video.seconds / 60)}:${String(video.seconds % 60).padStart(2, "0")}`
+  return (
+    <figure className="mb-6">
+      <figcaption className="mb-2 flex items-baseline justify-between font-mono text-[12px] text-(--muted)">
+        <span>Deep dive · what makes it work</span>
+        <span>{length}</span>
+      </figcaption>
+      <video
+        src={video.src}
+        poster={video.poster}
+        controls
+        preload="none"
+        playsInline
+        aria-label={`${name} deep dive video`}
+        className="aspect-video w-full rounded-lg bg-[#1A1016] ring-1 ring-(--win-ring)"
+      />
+    </figure>
   )
 }
 
