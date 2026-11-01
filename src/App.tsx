@@ -2,7 +2,7 @@ import { createContext, use, useEffect, useLayoutEffect, useRef, useState } from
 
 import { Icon } from "@/components/m3e/icon"
 import { cn } from "@/lib/utils"
-import { featured, PLATFORM_LABEL, projects, shotsOf, type Shot, type Video } from "./data"
+import { featured, formatTime, PLATFORM_LABEL, projects, shotsOf, videoShot, type Shot, type Video } from "./data"
 import { LyricsPill } from "./Lyrics"
 import { ThemeMenu } from "./Theme"
 import { useTooltips } from "./Tooltip"
@@ -79,7 +79,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
   return (
     <dialog
       ref={dialog}
-      aria-label="Screenshot"
+      aria-label={shot.video ? "Video" : "Screenshot"}
       onClose={() => onChange(null)}
       onClick={(e) => e.target === e.currentTarget && dialog.current?.close()}
       onKeyDown={(e) => {
@@ -89,12 +89,16 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
       className="lightbox fixed inset-0 m-0 grid h-dvh max-h-none w-dvw max-w-none place-items-center bg-[#0d070b]/92 p-4 text-white backdrop:bg-transparent sm:p-10"
     >
       <figure className="pointer-events-none grid max-h-full w-full justify-items-center gap-3">
-        <ShotImage
-          key={shot.src}
-          shot={shot}
-          maxHeight="(100dvh - 8rem)"
-          className="pointer-events-auto rounded-lg shadow-[0_30px_80px_rgba(0,0,0,.6)]"
-        />
+        {shot.video ? (
+          <VideoPlayer key={shot.src} shot={shot} video={shot.video} maxHeight="(100dvh - 8rem)" />
+        ) : (
+          <ShotImage
+            key={shot.src}
+            shot={shot}
+            maxHeight="(100dvh - 8rem)"
+            className="pointer-events-auto rounded-lg shadow-[0_30px_80px_rgba(0,0,0,.6)]"
+          />
+        )}
         <figcaption className="pointer-events-auto max-w-2xl text-center text-[14px] text-white/75">
           {shot.alt}
           {many && <span className="ml-2 font-mono text-white/45">{index + 1}/{shots.length}</span>}
@@ -104,7 +108,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
         type="button"
         onClick={() => dialog.current?.close()}
         aria-label="Close preview"
-        autoFocus
+        autoFocus={!shot.video}
         className="fixed top-4 right-4 grid size-11 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
       >
         <Icon name="close" size={22} />
@@ -115,7 +119,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous screenshot"
-            className="fixed top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
+            className="fixed bottom-4 left-3 grid size-11 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
           >
             <Icon name="chevron_left" size={26} />
           </button>
@@ -123,13 +127,220 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
             type="button"
             onClick={() => step(1)}
             aria-label="Next screenshot"
-            className="fixed top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
+            className="fixed right-3 bottom-4 grid size-11 sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
           >
             <Icon name="chevron_right" size={26} />
           </button>
         </>
       )}
     </dialog>
+  )
+}
+
+/**
+ * The deep-dive player: the poster's exact box, a big play button while paused, and a control bar
+ * (play, time, scrubber with buffered range, mute, fullscreen) that fades out while playing until the
+ * pointer moves. Keys while it has focus: Space/K play, ←/→ or J/L seek 5 s, M mute, F fullscreen.
+ */
+function VideoPlayer({ shot, video, maxHeight }: { shot: Shot; video: Video; maxHeight: string }) {
+  const box = useRef<HTMLDivElement>(null)
+  const el = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+  const [ended, setEnded] = useState(false)
+  const [waiting, setWaiting] = useState(false)
+  const [time, setTime] = useState(0)
+  const [buffered, setBuffered] = useState(0)
+  const [duration, setDuration] = useState(video.seconds)
+  const [muted, setMuted] = useState(false)
+  const [full, setFull] = useState(false)
+  const [idle, setIdle] = useState(false)
+  const idleTimer = useRef(0)
+
+  // smooth progress while playing; timeupdate alone only fires a few times a second
+  useEffect(() => {
+    if (!playing) return
+    let raf = 0
+    const tick = () => {
+      if (el.current) setTime(el.current.currentTime)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [playing])
+
+  useEffect(() => {
+    box.current?.focus()
+    el.current?.play().catch(() => {})
+    const onFull = () => setFull(document.fullscreenElement === box.current)
+    document.addEventListener("fullscreenchange", onFull)
+    return () => {
+      document.removeEventListener("fullscreenchange", onFull)
+      clearTimeout(idleTimer.current)
+    }
+  }, [])
+
+  const wake = () => {
+    setIdle(false)
+    clearTimeout(idleTimer.current)
+    idleTimer.current = window.setTimeout(() => setIdle(true), 2200)
+  }
+  const toggle = () => {
+    const v = el.current
+    if (!v) return
+    if (v.paused || v.ended) v.play().catch(() => {})
+    else v.pause()
+    wake()
+  }
+  const seek = (to: number) => {
+    const v = el.current
+    if (!v) return
+    v.currentTime = Math.min(Math.max(to, 0), duration)
+    setTime(v.currentTime)
+    wake()
+  }
+  const toggleMute = () => {
+    if (el.current) el.current.muted = !el.current.muted
+    wake()
+  }
+  const toggleFull = () => {
+    if (document.fullscreenElement) document.exitFullscreen()
+    else box.current?.requestFullscreen().catch(() => {})
+    wake()
+  }
+
+  const hide = playing && idle
+  const pct = duration ? (time / duration) * 100 : 0
+  const bufPct = duration ? (buffered / duration) * 100 : 0
+  const control =
+    "grid size-10 shrink-0 place-items-center rounded-full text-white hover:bg-white/15 focus-visible:bg-white/15"
+
+  return (
+    <div
+      ref={box}
+      tabIndex={-1}
+      role="group"
+      aria-label={shot.alt}
+      onPointerMove={wake}
+      onPointerDown={wake}
+      onKeyDown={(e) => {
+        const k = e.key.toLowerCase()
+        if (e.target instanceof HTMLButtonElement && (k === " " || k === "enter")) return
+        const actions: Record<string, () => void> = {
+          " ": toggle,
+          k: toggle,
+          arrowleft: () => seek(time - 5),
+          j: () => seek(time - 5),
+          arrowright: () => seek(time + 5),
+          l: () => seek(time + 5),
+          m: toggleMute,
+          f: toggleFull,
+          home: () => seek(0),
+          end: () => seek(duration),
+        }
+        if (!actions[k]) return
+        e.preventDefault()
+        e.stopPropagation()
+        actions[k]()
+      }}
+      className={cn(
+        "player group/player pointer-events-auto relative overflow-hidden rounded-lg bg-black shadow-[0_30px_80px_rgba(0,0,0,.6)] outline-none!",
+        hide && "cursor-none",
+        full && "rounded-none"
+      )}
+      style={
+        full
+          ? { width: "100vw", height: "100vh" }
+          : {
+              aspectRatio: `${shot.width} / ${shot.height}`,
+              width: `min(100%, ${shot.width}px, calc(${maxHeight} * ${shot.width / shot.height}))`,
+            }
+      }
+    >
+      <video
+        ref={el}
+        src={video.src}
+        poster={video.poster}
+        playsInline
+        preload="auto"
+        onClick={toggle}
+        onDoubleClick={toggleFull}
+        onPlay={() => {
+          setPlaying(true)
+          setEnded(false)
+          wake()
+        }}
+        onPause={() => setPlaying(false)}
+        onEnded={() => {
+          setPlaying(false)
+          setEnded(true)
+        }}
+        onWaiting={() => setWaiting(true)}
+        onPlaying={() => setWaiting(false)}
+        onCanPlay={() => setWaiting(false)}
+        onTimeUpdate={(e) => setTime(e.currentTarget.currentTime)}
+        onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || video.seconds)}
+        onProgress={(e) => {
+          const b = e.currentTarget.buffered
+          if (b.length) setBuffered(b.end(b.length - 1))
+        }}
+        onVolumeChange={(e) => setMuted(e.currentTarget.muted)}
+        className="absolute inset-0 size-full object-contain"
+      />
+
+      {waiting && playing && (
+        <span aria-hidden className="player-spinner pointer-events-none absolute inset-0 m-auto size-14 rounded-full" />
+      )}
+
+      {!playing && !waiting && (
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={ended ? "Play again" : "Play"}
+          className="absolute inset-x-0 top-0 bottom-12 m-auto grid size-14 place-items-center rounded-full bg-[#C2185B] text-white shadow-[0_8px_30px_rgba(0,0,0,.5)] ring-4 ring-white/20 transition-transform hover:scale-105 sm:bottom-0 sm:size-20 sm:ring-8"
+        >
+          <Icon name={ended ? "replay" : "play_arrow"} size={40} />
+        </button>
+      )}
+
+      <div
+        className={cn(
+          "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/75 to-transparent px-2 pt-8 pb-1 transition-opacity sm:px-3 sm:pt-16 sm:pb-2 duration-300",
+          hide && "pointer-events-none opacity-0"
+        )}
+      >
+        <input
+          type="range"
+          aria-label="Seek"
+          aria-valuetext={`${formatTime(time)} of ${formatTime(duration)}`}
+          min={0}
+          max={duration}
+          step={0.1}
+          value={time}
+          onChange={(e) => seek(Number(e.target.value))}
+          className="scrub block w-full"
+          style={{ "--p": `${pct}%`, "--b": `${Math.max(bufPct, pct)}%` } as React.CSSProperties}
+        />
+        <div className="flex items-center gap-1">
+          <button type="button" onClick={toggle} aria-label={playing ? "Pause" : "Play"} className={control}>
+            <Icon name={playing ? "pause" : "play_arrow"} size={26} />
+          </button>
+          <button type="button" onClick={toggleMute} aria-label={muted ? "Unmute" : "Mute"} className={control}>
+            <Icon name={muted ? "volume_off" : "volume_up"} size={22} />
+          </button>
+          <span className="ml-1 font-mono text-[13px] text-white/85 tabular-nums">
+            {formatTime(time)} <span className="text-white/45">/ {formatTime(Math.round(duration))}</span>
+          </span>
+          <button
+            type="button"
+            onClick={toggleFull}
+            aria-label={full ? "Exit full screen" : "Full screen"}
+            className={cn(control, "ml-auto")}
+          >
+            <Icon name={full ? "fullscreen_exit" : "fullscreen"} size={24} />
+          </button>
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -568,7 +779,7 @@ function WindowBody({ id }: { id: AppId }) {
   if (id === featured.id)
     return (
       <>
-        <Shots shots={featured.shots} />
+        <Shots shots={[videoShot(featured.name, featured.video), ...featured.shots]} />
         <div className="p-6">
           <Meta>At work · {featured.role}</Meta>
           <h2 className="mb-3 text-2xl font-[750] tracking-[-0.015em]">{featured.name}</h2>
@@ -581,7 +792,6 @@ function WindowBody({ id }: { id: AppId }) {
               </div>
             ))}
           </dl>
-          <DeepDive video={featured.video} name={featured.name} />
           <LinkButton href={featured.url}>Visit onecorecrm.com</LinkButton>
           <p className="mt-3 text-[12px] text-(--muted)">Private code · screenshots use made-up data</p>
         </div>
@@ -591,7 +801,7 @@ function WindowBody({ id }: { id: AppId }) {
   const p = projects.find((x) => x.id === id)!
   return (
     <>
-      <Shots shots={shotsOf(p.media)} />
+      <Shots shots={[videoShot(p.name, p.video), ...shotsOf(p.media)]} />
       <div className="p-6">
         <Meta>{p.platforms.map((x) => PLATFORM_LABEL[x]).join(" · ")}</Meta>
         <h2 className="mb-1 text-2xl font-[750] tracking-[-0.015em]">{p.name}</h2>
@@ -604,7 +814,6 @@ function WindowBody({ id }: { id: AppId }) {
             </li>
           ))}
         </ul>
-        <DeepDive video={p.video} name={p.name} />
         <div className="flex flex-wrap gap-2">
           {p.site && <LinkButton href={p.site}>Visit {new URL(p.site).host}</LinkButton>}
           <LinkButton href={p.repo} source>
@@ -675,28 +884,6 @@ function LinkButton({ href, source, children }: { href: string; source?: boolean
   )
 }
 
-/** The app's animated deep dive. Nothing downloads until play, so closed windows cost one small poster. */
-function DeepDive({ video, name }: { video: Video; name: string }) {
-  const length = `${Math.floor(video.seconds / 60)}:${String(video.seconds % 60).padStart(2, "0")}`
-  return (
-    <figure className="mb-6">
-      <figcaption className="mb-2 flex items-baseline justify-between font-mono text-[12px] text-(--muted)">
-        <span>Deep dive · what makes it work</span>
-        <span>{length}</span>
-      </figcaption>
-      <video
-        src={video.src}
-        poster={video.poster}
-        controls
-        preload="none"
-        playsInline
-        aria-label={`${name} deep dive video`}
-        className="aspect-video w-full rounded-lg bg-[#1A1016] ring-1 ring-(--win-ring)"
-      />
-    </figure>
-  )
-}
-
 function Shots({ shots }: { shots: Shot[] }) {
   const preview = use(PreviewContext)
   return (
@@ -706,16 +893,36 @@ function Shots({ shots }: { shots: Shot[] }) {
           key={s.src}
           type="button"
           onClick={() => preview({ shots, index })}
-          aria-label={`View full size: ${s.alt}`}
-          className="group flex min-w-0 flex-1 cursor-zoom-in justify-center rounded-md"
+          aria-label={s.video ? `Play ${s.alt}` : `View full size: ${s.alt}`}
+          className={cn(
+            "group flex min-w-0 justify-center rounded-md",
+            s.video ? "flex-[1.6] cursor-pointer" : "flex-1 cursor-zoom-in"
+          )}
         >
           <ShotImage shot={{ ...s, alt: "" }} maxHeight="18rem" lazy className="rounded-md">
+            {s.video ? (
+              <>
+                <span
+                  aria-hidden
+                  className="absolute inset-0 m-auto grid size-12 place-items-center rounded-full bg-[#C2185B] text-white shadow-[0_4px_18px_rgba(0,0,0,.45)] ring-4 ring-white/25 transition-transform group-hover:scale-110 group-focus-visible:scale-110"
+                >
+                  <Icon name="play_arrow" size={28} />
+                </span>
+                <span
+                  aria-hidden
+                  className="absolute bottom-2 left-2 rounded-md bg-black/65 px-1.5 py-0.5 font-mono text-[11px] text-white"
+                >
+                  Deep dive · {formatTime(s.video.seconds)}
+                </span>
+              </>
+            ) : (
             <span
               aria-hidden
               className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
             >
               <Icon name="open_in_full" size={16} />
             </span>
+            )}
           </ShotImage>
         </button>
       ))}

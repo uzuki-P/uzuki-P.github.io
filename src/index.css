@@ -153,6 +153,70 @@ body {
   }
 }
 
+/* Deep-dive player: scrubber (pink played, light buffered, dim rest) and buffering ring. */
+.scrub {
+  appearance: none;
+  height: 18px;
+  background: transparent;
+  cursor: pointer;
+}
+.scrub::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #e91e63 var(--p), rgb(255 255 255 / 0.5) var(--p) var(--b), rgb(255 255 255 / 0.22) var(--b));
+  transition: height 120ms;
+}
+.scrub::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #e91e63 var(--p), rgb(255 255 255 / 0.5) var(--p) var(--b), rgb(255 255 255 / 0.22) var(--b));
+}
+.scrub::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  transform: scale(0);
+  transition: transform 120ms;
+}
+.scrub::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.5);
+  transform: scale(0);
+  transition: transform 120ms;
+}
+.player:hover .scrub::-webkit-slider-thumb,
+.scrub:focus-visible::-webkit-slider-thumb {
+  transform: scale(1);
+}
+.player:hover .scrub::-moz-range-thumb,
+.scrub:focus-visible::-moz-range-thumb {
+  transform: scale(1);
+}
+.scrub:focus-visible {
+  outline: 2px solid #f48fb1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.player-spinner {
+  border: 4px solid rgb(255 255 255 / 0.2);
+  border-top-color: #e91e63;
+  animation: player-spin 800ms linear infinite;
+}
+@keyframes player-spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
 /* Icons fill columns from the top-left corner, top to bottom, like a real desktop. */
 .desktop-icons {
   grid-template-rows: repeat(auto-fill, 5.5rem);
@@ -272,6 +336,7 @@ body {
   .window-close,
   .window-minimize,
   .lightbox[open],
+  .player-spinner,
   .wave-bar {
     animation: none;
   }

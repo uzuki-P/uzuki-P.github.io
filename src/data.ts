@@ -6,7 +6,8 @@ export type Media =
   | { kind: "stage"; shots: Shot[]; layout: "row" | "stack" }
   | { kind: "desktop"; app: Shot; notification: Shot }
 
-export type Shot = { src: string; alt: string; width: number; height: number }
+/** A gallery item. With `video`, `src` is the poster and the lightbox plays the video instead. */
+export type Shot = { src: string; alt: string; width: number; height: number; video?: Video }
 
 /** An animated deep dive in public/videos/: 1920×1080 MP4 with a WebP poster of the same name. */
 export type Video = { src: string; poster: string; seconds: number }
@@ -233,6 +234,17 @@ export const projects: Project[] = [
     media: { kind: "window", shot: shot("viewport-find", "Viewport Find bar highlighting matches for “state” on a page") },
   },
 ]
+
+export const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`
+
+/** The deep dive as a gallery item, shown first. */
+export const videoShot = (name: string, v: Video): Shot => ({
+  src: v.poster,
+  alt: `${name} deep dive: the strengths that make it work · ${formatTime(v.seconds)}`,
+  width: 1920,
+  height: 1080,
+  video: v,
+})
 
 export function shotsOf(media: Media): Shot[] {
   if (media.kind === "window") return [media.shot]
