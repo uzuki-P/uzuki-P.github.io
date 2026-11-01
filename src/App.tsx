@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { featured, PLATFORM_LABEL, projects, shotsOf, type Shot } from "./data"
 import { LyricsPill } from "./Lyrics"
 import { ThemeMenu } from "./Theme"
+import { useTooltips } from "./Tooltip"
 import { WeatherMenu } from "./Weather"
 import { WavePill } from "./WavePill"
 
@@ -45,15 +46,14 @@ function useMedia(query: string) {
 }
 
 /** live width of an element, so the window area can stop where the icon columns start */
-function useWidth(ref: React.RefObject<HTMLElement | null>) {
+function useWidth(el: HTMLElement | null) {
   const [width, setWidth] = useState(96)
   useLayoutEffect(() => {
-    const el = ref.current
     if (!el) return
     const observer = new ResizeObserver(() => setWidth(el.offsetWidth))
     observer.observe(el)
     return () => observer.disconnect()
-  }, [ref])
+  }, [el])
   return width
 }
 
@@ -137,7 +137,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
 export function App() {
   const wide = useMedia(LG)
   const desk = useRef<HTMLDivElement>(null)
-  const icons = useRef<HTMLElement>(null)
+  const [icons, setIcons] = useState<HTMLElement | null>(null)
   const iconsWidth = useWidth(icons)
   /** open windows, back to front */
   const [stack, setStack] = useState<AppId[]>(["onecore", "about"])
@@ -186,11 +186,7 @@ export function App() {
       const w = desk.current?.clientWidth ?? 1280
       return { ...p, [id]: clamp(id, { x: w * 0.22 + (n % 6) * 36, y: 20 + (n % 6) * 30 }) }
     })
-    requestAnimationFrame(() => {
-      const win = document.querySelector<HTMLElement>(`[data-window="${id}"]`)
-      win?.focus({ preventScroll: true })
-      if (!matchMedia(LG).matches) win?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" })
-    })
+    requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-window="${id}"]`)?.focus({ preventScroll: true }))
   }
   const finishLeave = (id: AppId, how: Leave) => {
     setLeaving(({ [id]: _, ...rest }) => rest)
@@ -205,7 +201,7 @@ export function App() {
 
   return (
     <PreviewContext value={setPreview}>
-      <div className="desktop relative flex min-h-dvh flex-col pt-8 text-(--desk-ink)">
+      <div className="desktop relative flex min-h-dvh flex-col pt-12 text-(--desk-ink) lg:pt-8">
         <a
           href="#desktop-icons"
           className="sr-only z-[60] rounded-lg bg-[#C2185B] px-4 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
@@ -214,6 +210,7 @@ export function App() {
         </a>
 
         <TopBar
+          wide={wide}
           stack={stack}
           hidden={hidden}
           focused={focused}
@@ -223,66 +220,184 @@ export function App() {
           onTask={onTask}
         />
 
-        <div className="relative flex w-full flex-1 flex-col gap-6 px-4 pt-4 pb-4 lg:block lg:min-h-[440px]">
-          {lyricsShown && (
-            <LyricsPill
-              onHide={() => setLyricsShown(false)}
-              className="w-full shrink-0 lg:fixed lg:right-4 lg:bottom-4 lg:z-40 lg:w-[480px]"
-            />
-          )}
-          <nav
-            id="desktop-icons"
-            ref={icons}
-            aria-label="Projects"
-            className="desktop-icons grid grid-cols-3 gap-1 sm:grid-cols-5 lg:absolute lg:inset-y-4 lg:left-3 lg:grid-flow-col lg:grid-cols-none"
-          >
-            {APPS.map((app) => (
-              <button
-                key={app.id}
-                type="button"
-                onClick={() => launch(app.id)}
-                className="group flex h-[5.5rem] w-full flex-col items-center gap-1.5 rounded-xl p-1.5 text-[12px] leading-tight transition-colors hover:bg-(--hover) focus-visible:bg-(--hover) lg:w-24"
-              >
-                <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-[#FBF8FA] text-[#C2185B] shadow-(--tile-shadow) transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none">
-                  {app.id === "about" ? <img src={AVATAR} alt="" className="size-full" /> : <Icon name={app.icon} size={26} />}
-                </span>
-                <span className="text-center font-medium [text-shadow:var(--label-shadow)]">{app.name}</span>
-              </button>
-            ))}
-          </nav>
+        {wide ? (
+          <div className="relative min-h-[440px] flex-1">
+            {lyricsShown && (
+              <LyricsPill onHide={() => setLyricsShown(false)} className="fixed right-4 bottom-4 z-40 w-[480px]" />
+            )}
+            <nav
+              id="desktop-icons"
+              ref={setIcons}
+              aria-label="Projects"
+              className="desktop-icons absolute inset-y-4 left-3 grid grid-flow-col gap-1"
+            >
+              {APPS.map((app) => (
+                <button
+                  key={app.id}
+                  type="button"
+                  onClick={() => launch(app.id)}
+                  className="group flex h-[5.5rem] w-24 flex-col items-center gap-1.5 rounded-xl p-1.5 text-[12px] leading-tight transition-colors hover:bg-(--hover) focus-visible:bg-(--hover)"
+                >
+                  <AppTile id={app.id} icon={app.icon} />
+                  <span className="text-center font-medium [text-shadow:var(--label-shadow)]">{app.name}</span>
+                </button>
+              ))}
+            </nav>
 
-          <div
-            ref={desk}
-            style={{ "--icons": `${iconsWidth}px` } as React.CSSProperties}
-            className="relative flex flex-col gap-4 lg:absolute lg:inset-y-4 lg:right-4 lg:left-[calc(var(--icons)+1.75rem)] lg:block"
-          >
-            {/* DOM order stays fixed so focusing a window never re-mounts it; the stack only sets z-index */}
-            {APPS.filter((a) => stack.includes(a.id)).map(({ id }) => (
-              <Window
-                key={id}
-                id={id}
-                active={id === focused}
-                hidden={hidden.includes(id)}
-                z={stack.indexOf(id) + 1}
-                order={stack.length - stack.indexOf(id)}
-                pos={pos[id] ?? { x: 0, y: 0 }}
-                onFocus={() => raise(id)}
-                onMove={(p) => {
-                  touched.current = true
-                  setPos((s) => ({ ...s, [id]: clamp(id, p) }))
-                }}
-                leaving={leaving[id]}
-                onLeft={() => finishLeave(id, leaving[id]!)}
-                onMinimize={() => minimize(id)}
-                onClose={() => close(id)}
-              />
-            ))}
+            <div
+              ref={desk}
+              style={{ "--icons": `${iconsWidth}px` } as React.CSSProperties}
+              className="absolute inset-y-4 right-4 left-[calc(var(--icons)+1.75rem)]"
+            >
+              {/* DOM order stays fixed so focusing a window never re-mounts it; the stack only sets z-index */}
+              {APPS.filter((a) => stack.includes(a.id)).map(({ id }) => (
+                <Window
+                  key={id}
+                  id={id}
+                  active={id === focused}
+                  hidden={hidden.includes(id)}
+                  z={stack.indexOf(id) + 1}
+                  pos={pos[id] ?? { x: 0, y: 0 }}
+                  onFocus={() => raise(id)}
+                  onMove={(p) => {
+                    touched.current = true
+                    setPos((s) => ({ ...s, [id]: clamp(id, p) }))
+                  }}
+                  leaving={leaving[id]}
+                  onLeft={() => finishLeave(id, leaving[id]!)}
+                  onMinimize={() => minimize(id)}
+                  onClose={() => close(id)}
+                />
+              ))}
+            </div>
           </div>
-        </div>
-
+        ) : (
+          <PhoneHome
+            lyrics={lyricsShown && <LyricsPill onHide={() => setLyricsShown(false)} className="w-full" />}
+          />
+        )}
       </div>
       <Lightbox preview={preview} onChange={setPreview} />
     </PreviewContext>
+  )
+}
+
+/** The rounded app icon, shared by the desktop icons and the phone home screen. */
+function AppTile({ id, icon, className }: { id: AppId; icon: string; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "grid size-12 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-[#FBF8FA] text-[#C2185B] shadow-(--tile-shadow) transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none",
+        className
+      )}
+    >
+      {id === "about" ? <img src={AVATAR} alt="" className="size-full" /> : <Icon name={icon} size={26} />}
+    </span>
+  )
+}
+
+/* ---------- phone ---------- */
+
+/**
+ * Phones get a home screen instead of windows: the about card, the lyrics, then a grid of app
+ * icons. An app opens as a full-screen sheet; the sheet's back button and the phone's own Back
+ * gesture both close it.
+ */
+function PhoneHome({ lyrics }: { lyrics: React.ReactNode }) {
+  const [sheet, setSheet] = useState<AppId | null>(null)
+  const [closing, setClosing] = useState(false)
+
+  // the sheet is a history entry, so the system Back gesture closes it instead of leaving the page
+  useEffect(() => {
+    const onPop = () => setClosing(true)
+    addEventListener("popstate", onPop)
+    return () => removeEventListener("popstate", onPop)
+  }, [])
+  useEffect(() => {
+    if (!sheet) return
+    document.documentElement.style.overflow = "hidden"
+    return () => {
+      document.documentElement.style.overflow = ""
+    }
+  }, [sheet])
+
+  const open = (id: AppId) => {
+    history.pushState({ sheet: id }, "")
+    setClosing(false)
+    setSheet(id)
+  }
+  const back = () => history.back()
+  const closed = () => {
+    setSheet(null)
+    setClosing(false)
+  }
+
+  return (
+    <div className="flex flex-col gap-5 px-4 pt-4 pb-10">
+      <section aria-label="About me" className="overflow-hidden rounded-2xl bg-(--win) text-(--ink) shadow-[0_10px_30px_rgba(0,0,0,.18)] ring-1 ring-(--win-ring)">
+        <About phone />
+      </section>
+      {lyrics}
+      <section aria-labelledby="phone-apps">
+        <h2 id="phone-apps" className="mb-3 px-1 text-[13px] font-semibold tracking-wide uppercase opacity-70">
+          Projects
+        </h2>
+        <nav id="desktop-icons" aria-labelledby="phone-apps" className="grid grid-cols-4 gap-x-1 gap-y-4 sm:grid-cols-6">
+          {APPS.filter((a) => a.id !== "about").map((app) => (
+            <button
+              key={app.id}
+              type="button"
+              onClick={() => open(app.id)}
+              className="group flex flex-col items-center gap-1.5 rounded-xl py-1.5 text-[12px] leading-tight active:bg-(--hover)"
+            >
+              <AppTile id={app.id} icon={app.icon} className="size-14 rounded-2xl" />
+              <span className="line-clamp-2 text-center font-medium [text-shadow:var(--label-shadow)]">{app.name}</span>
+            </button>
+          ))}
+        </nav>
+      </section>
+      {sheet && <AppSheet id={sheet} closing={closing} onBack={back} onClosed={closed} />}
+    </div>
+  )
+}
+
+function AppSheet({ id, closing, onBack, onClosed }: { id: AppId; closing: boolean; onBack: () => void; onClosed: () => void }) {
+  const app = appOf(id)
+  const backButton = useRef<HTMLButtonElement>(null)
+  useEffect(() => backButton.current?.focus({ preventScroll: true }), [])
+  useEffect(() => {
+    if (closing && reducedMotion()) onClosed()
+  }, [closing, onClosed])
+
+  return (
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-label={app.name}
+      onKeyDown={(e) => e.key === "Escape" && onBack()}
+      onAnimationEnd={(e) => e.target === e.currentTarget && closing && onClosed()}
+      className={cn(
+        "fixed inset-x-0 top-12 bottom-0 z-40 flex flex-col overflow-hidden rounded-t-2xl bg-(--win) text-(--ink) shadow-[0_-10px_40px_rgba(0,0,0,.3)]",
+        closing ? "sheet-out" : "sheet-in"
+      )}
+    >
+      <div className="flex h-14 shrink-0 items-center gap-2 border-b border-(--win-ring) px-1.5">
+        <button
+          ref={backButton}
+          type="button"
+          onClick={onBack}
+          aria-label="Back to home"
+          className="grid size-11 place-items-center rounded-full hover:bg-(--hover)"
+        >
+          <Icon name="arrow_back" size={22} />
+        </button>
+        <Icon name={app.icon} size={18} className="text-(--accent-ink)" />
+        <span className="truncate text-[15px] font-semibold">{app.name}</span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain pb-[env(safe-area-inset-bottom)]">
+        <WindowBody id={id} />
+      </div>
+    </section>
   )
 }
 
@@ -291,7 +406,6 @@ function Window({
   active,
   hidden,
   z,
-  order,
   pos,
   onFocus,
   onMove,
@@ -304,7 +418,6 @@ function Window({
   active: boolean
   hidden: boolean
   z: number
-  order: number
   pos: Pos
   onFocus: () => void
   onMove: (p: Pos) => void
@@ -327,12 +440,11 @@ function Window({
       onFocus={onFocus}
       onKeyDown={(e) => e.key === "Escape" && onClose()}
       onAnimationEnd={(e) => e.target === e.currentTarget && leaving && onLeft()}
-      style={{ "--x": `${pos.x}px`, "--y": `${pos.y}px`, "--w": `${width}px`, zIndex: z, order } as React.CSSProperties}
+      style={{ "--x": `${pos.x}px`, "--y": `${pos.y}px`, "--w": `${width}px`, zIndex: z } as React.CSSProperties}
       className={cn(
         leaving === "close" ? "window-close" : leaving === "minimize" ? "window-minimize" : "window-in",
         leaving && "pointer-events-none",
-        "flex scroll-mt-4 flex-col overflow-hidden rounded-xl bg-(--win) text-(--ink) outline-none",
-        "lg:absolute lg:top-[var(--y)] lg:left-[var(--x)] lg:max-h-[calc(100%-var(--y))] lg:w-[var(--w)]",
+        "absolute top-(--y) left-(--x) flex max-h-[calc(100%-var(--y))] w-(--w) flex-col overflow-hidden rounded-xl bg-(--win) text-(--ink) outline-none",
         active
           ? "shadow-[0_28px_70px_rgba(0,0,0,.45)] ring-1 ring-[#E91E63]/60"
           : "shadow-[0_14px_36px_rgba(0,0,0,.3)] ring-1 ring-(--win-ring)"
@@ -340,11 +452,11 @@ function Window({
     >
       <div
         className={cn(
-          "flex h-10 shrink-0 touch-none items-center gap-2 pr-1.5 pl-3.5 text-[13px] select-none lg:cursor-grab lg:active:cursor-grabbing",
+          "flex h-10 shrink-0 cursor-grab touch-none items-center gap-2 pr-1.5 pl-3.5 text-[13px] select-none active:cursor-grabbing",
           active ? "bg-(--title)" : "bg-(--title-idle) text-(--muted)"
         )}
         onPointerDown={(e) => {
-          if ((e.target as HTMLElement).closest("button") || !matchMedia(LG).matches) return
+          if ((e.target as HTMLElement).closest("button")) return
           drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }
           e.currentTarget.setPointerCapture(e.pointerId)
         }}
@@ -358,7 +470,7 @@ function Window({
           type="button"
           onClick={onMinimize}
           aria-label={`Minimize ${app.name}`}
-          className="hidden size-7 place-items-center rounded-full hover:bg-(--hover) lg:grid"
+          className="grid size-7 place-items-center rounded-full hover:bg-(--hover)"
         >
           <Icon name="minimize" size={16} />
         </button>
@@ -424,7 +536,7 @@ function WindowBody({ id }: { id: AppId }) {
   )
 }
 
-function About() {
+function About({ phone }: { phone?: boolean }) {
   return (
     <div className="p-6">
       <div className="mb-5 flex items-center gap-4">
@@ -440,8 +552,8 @@ function About() {
         TypeScript.
       </p>
       <p className="mb-6 leading-relaxed text-(--ink-2)">
-        Every icon on this desktop opens one of them. I’m open to frontend, Kotlin and developer tooling work, remote
-        or in Medan.
+        {phone ? "Every app below opens one of them." : "Every icon on this desktop opens one of them."} I’m open to
+        frontend, Kotlin and developer tooling work, remote or in Medan.
       </p>
       <div className="flex flex-wrap gap-2 text-[14px] font-medium">
         <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 rounded-lg bg-[#C2185B] px-3.5 py-2 text-white hover:bg-[#AD1457]">
@@ -518,6 +630,7 @@ function useClock() {
 }
 
 function TopBar({
+  wide,
   stack,
   hidden,
   focused,
@@ -526,6 +639,7 @@ function TopBar({
   onLaunch,
   onTask,
 }: {
+  wide: boolean
   stack: AppId[]
   hidden: AppId[]
   focused: AppId | undefined
@@ -535,44 +649,62 @@ function TopBar({
   onTask: (id: AppId) => void
 }) {
   const clock = useClock()
-  const tray = "grid size-7 shrink-0 place-items-center rounded-md hover:bg-(--hover)"
+  const { ref, tooltip } = useTooltips<HTMLElement>()
+  // touch-sized on phones, compact on the desktop
+  const tray = "grid size-10 shrink-0 place-items-center rounded-lg hover:bg-(--hover) lg:size-7 lg:rounded-md"
   return (
-    <header className="fixed inset-x-0 top-0 z-50 flex h-8 items-center gap-1 border-b border-(--panel-line) bg-(--panel) px-2 text-[12.5px] text-(--panel-ink) backdrop-blur-xl">
-      <button type="button" onClick={() => onLaunch("about")} aria-label="Open about me" className={cn(tray, "hidden md:grid")}>
-        <img src={AVATAR} alt="" className="size-5 rounded-full" />
-      </button>
-      <div className="hidden min-w-0 flex-1 gap-1 overflow-x-auto md:flex" aria-label="Open windows" role="group">
-        {APPS.filter((a) => stack.includes(a.id)).map((a) => (
-          <button
-            key={a.id}
-            type="button"
-            onClick={() => onTask(a.id)}
-            aria-pressed={a.id === focused}
-            className={cn(
-              "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 hover:bg-(--hover)",
-              a.id === focused && "bg-(--hover) shadow-[inset_0_-1.5px_0_var(--accent-line)]",
-              hidden.includes(a.id) && "opacity-55"
-            )}
-          >
-            <Icon name={a.icon} size={15} />
-            <span className="hidden sm:inline">{a.name}</span>
+    <header
+      ref={ref}
+      className="fixed inset-x-0 top-0 z-50 flex h-12 items-center gap-0.5 border-b border-(--panel-line) bg-(--panel) px-1.5 text-[12.5px] text-(--panel-ink) backdrop-blur-xl lg:h-8 lg:gap-1 lg:px-2"
+    >
+      {wide && (
+        <>
+          <button type="button" onClick={() => onLaunch("about")} aria-label="Open about me" data-tip="About me" className={tray}>
+            <img src={AVATAR} alt="" className="size-5 rounded-full" />
           </button>
-        ))}
-      </div>
-      <div className="mx-1 flex min-w-0 flex-1 justify-center md:flex-none">
-        <WavePill avatar={AVATAR} lyricsShown={lyricsShown} onToggleLyrics={onToggleLyrics} />
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto" aria-label="Open windows" role="group">
+            {APPS.filter((a) => stack.includes(a.id)).map((a) => (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => onTask(a.id)}
+                aria-pressed={a.id === focused}
+                data-tip={a.id === focused ? `Minimize ${a.name}` : `Show ${a.name}`}
+                className={cn(
+                  "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 hover:bg-(--hover)",
+                  a.id === focused && "bg-(--hover) shadow-[inset_0_-1.5px_0_var(--accent-line)]",
+                  hidden.includes(a.id) && "opacity-55"
+                )}
+              >
+                <Icon name={a.icon} size={15} />
+                <span>{a.name}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <div className="mx-1 flex min-w-0 flex-1 justify-center lg:flex-none">
+        <WavePill avatar={AVATAR} lyricsShown={lyricsShown} onToggleLyrics={onToggleLyrics} buttonClassName={tray} />
       </div>
       <ThemeMenu triggerClassName={tray} />
-      <a href={GITHUB} {...EXTERNAL} aria-label="GitHub" className={cn(tray, "hidden sm:grid")}>
-        <Icon name="code" size={16} />
-      </a>
-      <a href={`mailto:${EMAIL}`} aria-label="Email" className={cn(tray, "hidden sm:grid")}>
-        <Icon name="mail" size={16} />
-      </a>
-      <WeatherMenu triggerClassName="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 hover:bg-(--hover)" />
-      <time className="shrink-0 px-2 font-mono tabular-nums" title={`${clock.date}, Medan (WIB)`}>
+      {wide && (
+        <>
+          <a href={GITHUB} {...EXTERNAL} aria-label="GitHub" data-tip="GitHub: uzuki-P" className={tray}>
+            <Icon name="code" size={16} />
+          </a>
+          <a href={`mailto:${EMAIL}`} aria-label="Email" data-tip={`Email ${EMAIL}`} className={tray}>
+            <Icon name="mail" size={16} />
+          </a>
+        </>
+      )}
+      <WeatherMenu triggerClassName="flex h-10 shrink-0 items-center gap-1 rounded-lg px-2 hover:bg-(--hover) lg:h-7 lg:rounded-md" />
+      <time
+        className="hidden shrink-0 px-2 font-mono tabular-nums sm:block"
+        data-tip={`${clock.date} · Medan, Western Indonesia Time`}
+      >
         {clock.time} <span className="text-(--muted-panel)">WIB</span>
       </time>
+      {tooltip}
     </header>
   )
 }

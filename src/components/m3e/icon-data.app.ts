@@ -14,6 +14,9 @@ const data: IconifyJSON = {
     "account-balance-wallet-outline": {
       "body": "<path fill=\"currentColor\" d=\"M5 19V5zm0 2q-.825 0-1.412-.587T3 19V5q0-.825.588-1.412T5 3h14q.825 0 1.413.588T21 5v2.5h-2V5H5v14h14v-2.5h2V19q0 .825-.587 1.413T19 21zm8-4q-.825 0-1.412-.587T11 15V9q0-.825.588-1.412T13 7h7q.825 0 1.413.588T22 9v6q0 .825-.587 1.413T20 17zm7-2V9h-7v6zm-2.937-1.937q.437-.438.437-1.063t-.437-1.062T16 10.5t-1.062.438T14.5 12t.438 1.063T16 13.5t1.063-.437\"/>"
     },
+    "arrow-back-rounded": {
+      "body": "<path fill=\"currentColor\" d=\"m7.825 13l4.9 4.9q.3.3.288.7t-.313.7q-.3.275-.7.288t-.7-.288l-6.6-6.6q-.15-.15-.213-.325T4.426 12t.063-.375t.212-.325l6.6-6.6q.275-.275.688-.275t.712.275q.3.3.3.713t-.3.712L7.825 11H19q.425 0 .713.288T20 12t-.288.713T19 13z\"/>"
+    },
     "arrow-outward-rounded": {
       "body": "<path fill=\"currentColor\" d=\"m16 8.4l-8.9 8.9q-.275.275-.7.275t-.7-.275t-.275-.7t.275-.7L14.6 7H7q-.425 0-.712-.288T6 6t.288-.712T7 5h10q.425 0 .713.288T18 6v10q0 .425-.288.713T17 17t-.712-.288T16 16z\"/>"
     },
@@ -183,6 +186,9 @@ const data: IconifyJSON = {
     },
     "account-balance-wallet-rounded": {
       "parent": "account-balance-wallet"
+    },
+    "arrow-back-outline-rounded": {
+      "parent": "arrow-back-rounded"
     },
     "arrow-outward-outline-rounded": {
       "parent": "arrow-outward-rounded"

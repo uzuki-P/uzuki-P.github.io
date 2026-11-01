@@ -72,6 +72,7 @@ export function ThemeMenu({ triggerClassName }: { triggerClassName: string }) {
       role="menu"
       label="Theme"
       triggerLabel={`Theme: ${current.label}`}
+      tip={`Theme: ${current.label}`}
       triggerClassName={triggerClassName}
       trigger={<Icon name={current.icon} size={16} />}
       className="w-40"

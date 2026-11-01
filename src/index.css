@@ -30,6 +30,8 @@
   --muted-panel: rgb(42 20 34 / 0.55);
   --pill: rgb(255 255 255 / 0.6);
   --pill-halo: #fdf3f7;
+  --tip: #2a1422;
+  --tip-ink: #fbf8fa;
   --wave-played: rgb(194 24 91 / 0.38);
   --wave-rest: rgb(240 98 146 / 0.16);
   --wallpaper:
@@ -66,6 +68,8 @@
   --muted-panel: rgb(255 255 255 / 0.5);
   --pill: rgb(255 255 255 / 0.06);
   --pill-halo: #1d1219;
+  --tip: #f6eef2;
+  --tip-ink: #1e1519;
   --wave-played: rgb(240 98 146 / 0.42);
   --wave-rest: rgb(244 143 177 / 0.14);
   --wallpaper:
@@ -183,6 +187,35 @@ body {
   }
 }
 
+/* top bar tooltip (Tooltip.tsx) */
+.tooltip {
+  animation: tooltip-in 120ms ease-out;
+}
+@keyframes tooltip-in {
+  from {
+    opacity: 0;
+    translate: 0 -2px;
+  }
+}
+
+/* phone app sheet (App.tsx AppSheet): slides up to open, down to close */
+.sheet-in {
+  animation: sheet-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sheet-out {
+  animation: sheet-out 200ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes sheet-in {
+  from {
+    translate: 0 100%;
+  }
+}
+@keyframes sheet-out {
+  to {
+    translate: 0 100%;
+  }
+}
+
 /* top bar dropdowns (Popover.tsx) */
 .top-popover {
   transition:
@@ -217,6 +250,9 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .tooltip,
+  .sheet-in,
+  .sheet-out,
   .window-in,
   .window-close,
   .window-minimize,

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils"
 export function Popover({
   trigger,
   triggerLabel,
+  tip,
   triggerClassName,
   role,
   label,
@@ -18,6 +19,8 @@ export function Popover({
 }: {
   trigger: React.ReactNode
   triggerLabel: string
+  /** tooltip text (see Tooltip.tsx); defaults to the label */
+  tip?: string
   triggerClassName?: string
   role?: "menu" | "dialog"
   label: string
@@ -55,7 +58,7 @@ export function Popover({
         popoverTarget={id}
         aria-haspopup={role === "menu" ? "menu" : "dialog"}
         aria-label={triggerLabel}
-        title={triggerLabel}
+        data-tip={tip ?? triggerLabel}
         className={triggerClassName}
       >
         {trigger}

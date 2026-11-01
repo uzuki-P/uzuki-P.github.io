@@ -84,6 +84,7 @@ export function WeatherMenu({ triggerClassName }: { triggerClassName: string }) 
     <Popover
       label="Weather in Medan"
       triggerLabel={`Medan: ${condition.label}, ${round(weather.temperature)}°C`}
+      tip={`Weather in Medan: ${condition.label.toLowerCase()}, feels like ${round(weather.feelsLike)}°C`}
       triggerClassName={triggerClassName}
       trigger={
         <>

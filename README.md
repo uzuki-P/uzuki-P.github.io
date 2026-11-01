@@ -27,7 +27,9 @@ Colors: Material pink-500 `#E91E63` lights the wallpaper; buttons and links use 
 `localStorage` under `color-mode` (index.html applies it before first paint).
 
 Icon names must be written as `name="x"` or `icon: "x"` so `just icons` bundles them.
-Screenshots open full screen on click. Windows open side by side on wide screens and stack
+Screenshots open full screen on click. Below 1024px the page becomes a phone home screen instead of a desktop: the
+about card, the lyrics and an app grid, where each app opens as a full-screen sheet that the
+phone's Back gesture closes. Top bar items get tooltips from `src/Tooltip.tsx` via `data-tip`. Windows open side by side on wide screens and stack
 newest-first on phones.
 
 ## Commands
