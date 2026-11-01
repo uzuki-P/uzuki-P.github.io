@@ -62,7 +62,7 @@ at `https://uzuki-p.github.io/<repo>/`. The build uses relative asset paths, so 
 | --- | --- |
 | OneCore CRM | capital-crm mocked Playwright fixtures (made-up data) |
 | TabQuest | public runtime on a throwaway DB seeded by `tools/tabquest-seed.ts` (made-up players) |
-| Kalender Cuti | the live site, https://kalender-cuti.vercel.app, at 1440×900 in light mode |
+| Kalender Cuti | the live site, https://kalender-cuti.vercel.app/2026/, at 1440×900 in light mode: May with 29 Mei selected, and the Setahun view |
 | Spendr | `spendr-kt/docs/screenshots/spendr-kt/` |
 | Pray Time | `pray-time-promo/public/app/` |
 | Gokapi | `just desktop-mock` in gokapi-android (fake server) |
