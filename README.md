@@ -1,17 +1,34 @@
 # Portfolio
 
-Portfolio site for Rahmat Fajar (uzuki-P). React 19, Vite, Tailwind CSS v4 and
-[shadcn-m3e](https://github.com/Crysta1221/shadcn-m3e) (Material 3 Expressive).
+Portfolio site for Rahmat Fajar (uzuki-P), laid out as a Linux desktop session: projects are
+desktop icons that open draggable windows, a top bar tracks open windows and plays the intro in a
+Wave Player pill, and a Lyrics Float pill sings it in the corner. React 19, Vite and Tailwind CSS v4.
 
-- `src/data.ts`: the featured CRM and every side project (copy, links, shapes, screenshots)
-- `src/App.tsx`: the page; `src/index.css`: the few styles outside the M3E tokens
-- `src/components/m3e/`, `src/lib/m3e/`: shadcn-m3e source copied from the registry
-  (upstream commit `98f011bc8e5932be4d5199419f69d224c936c3aa`, shadcn CLI 4.23)
+- `src/data.ts`: the featured CRM and every side project (copy, links, icons, screenshots)
+- `src/App.tsx`: the desktop, windows, screenshot preview and top bar; `src/index.css`: themes and motion
+- `src/player.ts`: the intro lyrics (Japanese, romaji, English), their timing, and the shared play clock
+- `src/Lyrics.tsx`: the lyrics pill, with motion copied from Lyrics Float's `LyricsViewport.kt`
+- `src/WavePill.tsx`: the top bar's Wave Player pill; its visualizer is also the progress bar
+- `src/Theme.tsx`, `src/Weather.tsx`: the top bar's theme dropdown and Medan weather, both on the
+  native popover in `src/Popover.tsx`. Weather comes from [Open-Meteo](https://open-meteo.com/)
+  (no API key, metric units) in the visitor's browser and refreshes every 15 minutes; if it fails,
+  the top bar leaves it out
+- `src/components/m3e/icon*.ts(x)`: bundled Material Symbols, from
+  [shadcn-m3e](https://github.com/Crysta1221/shadcn-m3e) (upstream commit
+  `98f011bc8e5932be4d5199419f69d224c936c3aa`); the rest of `src/components/m3e/` and `src/lib/m3e/`
+  is that library's source and is no longer used by the page
+- `public/favicon.svg`: the glasses avatar, also used in the page and taskbar
 - `public/shots/`: screenshots as WebP
 - `tools/`: scripts that produced some screenshots
 
-Theme: seed `#1F6E5C`, `expressive` scheme variant. System, Light and Dark modes
-live in the top bar menu and are saved in `localStorage` under `color-mode`.
+Colors: Material pink-500 `#E91E63` lights the wallpaper; buttons and links use pink-700
+`#C2185B` so white text keeps AA contrast. Light and dark themes are CSS variables in
+`src/index.css`; the top bar's theme dropdown offers System, Light and Dark and saves the choice in
+`localStorage` under `color-mode` (index.html applies it before first paint).
+
+Icon names must be written as `name="x"` or `icon: "x"` so `just icons` bundles them.
+Screenshots open full screen on click. Windows open side by side on wide screens and stack
+newest-first on phones.
 
 ## Commands
 

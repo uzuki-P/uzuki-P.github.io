@@ -1,42 +1,233 @@
 @import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
 @import "@fontsource-variable/roboto-flex/standard.css";
 @import "@fontsource-variable/jetbrains-mono";
 @import "./lib/m3e/m3e.css";
 
-@custom-variant dark (&:is(.dark *));
-
-html {
-  scroll-behavior: smooth;
+/* Light theme: blush wallpaper, white windows. Pink-500 #E91E63 is the light; pink-700 #C2185B carries text. */
+:root {
+  color-scheme: light;
+  background: #fbeef3;
+  --desk-ink: #2a1422;
+  --label-shadow: 0 1px 2px rgb(255 255 255 / 0.7);
+  --tile-shadow: 0 3px 10px rgb(136 14 79 / 0.18);
+  --hover: rgb(136 14 79 / 0.08);
+  --win: #fbf8fa;
+  --win-ring: rgb(42 20 34 / 0.12);
+  --title: #ffffff;
+  --title-idle: #efe6eb;
+  --ink: #1e1519;
+  --ink-2: #3a2c33;
+  --muted: #6b5a62;
+  --chip: #f5eaf0;
+  --chip-hover: #ebd9e3;
+  --chip-ink: #5a3a4a;
+  --accent-ink: #c2185b;
+  --accent-line: #e91e63;
+  --focus: #c2185b;
+  --panel: rgb(255 255 255 / 0.72);
+  --panel-ink: #2a1422;
+  --panel-line: rgb(42 20 34 / 0.1);
+  --muted-panel: rgb(42 20 34 / 0.55);
+  --pill: rgb(255 255 255 / 0.6);
+  --pill-halo: #fdf3f7;
+  --wave-played: rgb(194 24 91 / 0.38);
+  --wave-rest: rgb(240 98 146 / 0.16);
+  --wallpaper:
+    radial-gradient(55% 60% at 12% 8%, rgb(233 30 99 / 0.22), transparent 70%),
+    radial-gradient(50% 55% at 92% 96%, rgb(240 98 146 / 0.28), transparent 70%),
+    radial-gradient(40% 40% at 70% 30%, rgb(255 255 255 / 0.6), transparent 70%),
+    linear-gradient(165deg, #fdf3f7, #f6dbe6 70%);
 }
 
-/* Linux desktop shots sit on a dark "wallpaper" tinted from the theme's primary color. */
-.stage {
-  background:
-    radial-gradient(60% 70% at 25% 20%, color-mix(in oklab, var(--color-tertiary) 35%, transparent), transparent),
-    radial-gradient(60% 70% at 85% 90%, color-mix(in oklab, var(--color-primary) 40%, transparent), transparent),
-    color-mix(in oklab, var(--color-primary) 18%, #0b0d0c);
+/* Dark theme: plum wallpaper with soft pink light, dark windows. */
+:root.dark {
+  color-scheme: dark;
+  background: #160d13;
+  --desk-ink: #f6eef2;
+  --label-shadow: 0 1px 3px rgb(0 0 0 / 0.8);
+  --tile-shadow: 0 4px 14px rgb(0 0 0 / 0.35);
+  --hover: rgb(255 255 255 / 0.08);
+  --win: #221820;
+  --win-ring: rgb(255 255 255 / 0.08);
+  --title: #2d2029;
+  --title-idle: #1b1318;
+  --ink: #f6eef2;
+  --ink-2: #ddcbd4;
+  --muted: #a8949e;
+  --chip: #33242d;
+  --chip-hover: #402d39;
+  --chip-ink: #f3d9e5;
+  --accent-ink: #f48fb1;
+  --accent-line: #f06292;
+  --focus: #f48fb1;
+  --panel: rgb(18 10 15 / 0.85);
+  --panel-ink: #f6eef2;
+  --panel-line: rgb(255 255 255 / 0.08);
+  --muted-panel: rgb(255 255 255 / 0.5);
+  --pill: rgb(255 255 255 / 0.06);
+  --pill-halo: #1d1219;
+  --wave-played: rgb(240 98 146 / 0.42);
+  --wave-rest: rgb(244 143 177 / 0.14);
+  --wallpaper:
+    radial-gradient(55% 60% at 12% 8%, rgb(233 30 99 / 0.32), transparent 70%),
+    radial-gradient(50% 55% at 92% 96%, rgb(136 14 79 / 0.45), transparent 70%),
+    radial-gradient(40% 40% at 70% 30%, rgb(244 143 177 / 0.07), transparent 70%),
+    linear-gradient(165deg, #2a1422, #160d13 65%);
 }
 
-.contact-spin {
-  animation: contact-spin 40s linear infinite;
+body {
+  font-family: "Roboto Flex Variable", system-ui, sans-serif;
 }
-.contact-spin > * {
-  animation: contact-spin 40s linear infinite reverse;
+
+.desktop {
+  background: var(--wallpaper);
+  background-attachment: fixed;
 }
-@keyframes contact-spin {
+
+/* Roboto Flex has no Japanese glyphs; use each OS's own Japanese face. */
+.jp {
+  font-family: "Roboto Flex Variable", "Hiragino Sans", "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
+}
+
+:where(.desktop, .lightbox) :focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Lyrics Float karaoke: the sung color wipes in behind a soft edge 0.9em wide. */
+.karaoke-word {
+  background: linear-gradient(
+    90deg,
+    var(--sung, #f48fb1) calc((100% + 0.9em) * var(--p) - 0.9em),
+    var(--unsung, #ffffff) calc((100% + 0.9em) * var(--p))
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+.karaoke-romaji {
+  --unsung: rgb(255 255 255 / 0.62);
+}
+.lyrics-line {
+  filter: drop-shadow(0 2px 6px rgb(0 0 0 / 0.55));
+}
+
+/* Wave Player: the visualizer bars. Paused, they fall to the floor and stop; playing, they rise again. */
+.wave-bar {
+  height: var(--low);
+  animation: wave-bar ease-in-out infinite alternate;
+}
+.wave-fall {
+  transform-origin: bottom;
+  transition: scale 420ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+.wave-pill.is-paused .wave-fall {
+  scale: 1 0.1;
+}
+.wave-pill.is-paused .wave-bar {
+  animation-play-state: paused;
+}
+/* a halo in the pill's own color keeps the title readable over the bars */
+.wave-title {
+  text-shadow:
+    0 0 2px var(--pill-halo),
+    0 0 4px var(--pill-halo),
+    0 0 8px var(--pill-halo);
+}
+@keyframes wave-bar {
   to {
-    rotate: 360deg;
+    height: 92%;
+  }
+}
+
+.lightbox[open] {
+  animation: lightbox-in 160ms ease-out;
+}
+@keyframes lightbox-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Icons fill columns from the top-left corner, top to bottom, like a real desktop. */
+@media (min-width: 1024px) {
+  .desktop-icons {
+    grid-template-rows: repeat(auto-fill, 5.5rem);
+    grid-auto-columns: 6rem;
+    align-content: start;
+  }
+}
+
+.window-in {
+  animation: window-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.window-close {
+  animation: window-close 150ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+/* minimize shrinks up toward the top bar, where its task button lives */
+.window-minimize {
+  transform-origin: top center;
+  animation: window-minimize 220ms cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+@keyframes window-close {
+  to {
+    opacity: 0;
+    scale: 0.95;
+  }
+}
+@keyframes window-minimize {
+  to {
+    opacity: 0;
+    scale: 0.6;
+    translate: 0 -40px;
+  }
+}
+
+/* top bar dropdowns (Popover.tsx) */
+.top-popover {
+  transition:
+    opacity 140ms,
+    translate 140ms,
+    display 140ms allow-discrete,
+    overlay 140ms allow-discrete;
+}
+.top-popover:not(:popover-open) {
+  opacity: 0;
+  translate: 0 -4px;
+}
+@starting-style {
+  .top-popover:popover-open {
+    opacity: 0;
+    translate: 0 -4px;
+  }
+}
+
+/* theme switch: the new theme grows as a circle from the theme button (App.tsx useColorMode) */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+@keyframes window-in {
+  from {
+    opacity: 0;
+    scale: 0.97;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .contact-spin,
-  .contact-spin > * {
+  .window-in,
+  .window-close,
+  .window-minimize,
+  .lightbox[open],
+  .wave-bar {
     animation: none;
+  }
+  .wave-fall {
+    transition: none;
+  }
+  .lyrics-stack * {
+    transition: none !important;
   }
 }

@@ -1,475 +1,578 @@
-import { useEffect, useState } from "react"
+import { createContext, use, useEffect, useLayoutEffect, useRef, useState } from "react"
 
-import { Button } from "@/components/m3e/button"
-import { Card } from "@/components/m3e/card"
-import { FilterChip } from "@/components/m3e/chip"
-import { useColorMode } from "@/components/m3e/color-mode-provider"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuTrigger,
-} from "@/components/m3e/dropdown-menu"
 import { Icon } from "@/components/m3e/icon"
-import { Shape, type ShapeName } from "@/components/m3e/shape"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/m3e/tooltip"
 import { cn } from "@/lib/utils"
-import {
-  featured,
-  PLATFORM_LABEL,
-  projects,
-  type Media,
-  type Platform,
-  type Project,
-  type Tone,
-} from "./data"
-
-const TONE: Record<Tone, string> = {
-  primary: "bg-primary-container text-on-primary-container",
-  secondary: "bg-secondary-container text-on-secondary-container",
-  tertiary: "bg-tertiary-container text-on-tertiary-container",
-}
-
-/** external links open in a new tab */
-const EXTERNAL = { target: "_blank", rel: "noopener noreferrer" } as const
+import { featured, PLATFORM_LABEL, projects, shotsOf, type Shot } from "./data"
+import { LyricsPill } from "./Lyrics"
+import { ThemeMenu } from "./Theme"
+import { WeatherMenu } from "./Weather"
+import { WavePill } from "./WavePill"
 
 const GITHUB = "https://github.com/uzuki-P"
 const EMAIL = "rahmatfajar15@gmail.com"
 const LINKEDIN = "https://www.linkedin.com/in/rahmat-fajar-a9a586b3"
+const AVATAR = `${import.meta.env.BASE_URL}favicon.svg`
+/** external links open in a new tab */
+const EXTERNAL = { target: "_blank", rel: "noopener noreferrer" } as const
 
-function prefersReducedMotion() {
+type Leave = "close" | "minimize"
+type AppId = "about" | "onecore" | (typeof projects)[number]["id"]
+type Pos = { x: number; y: number }
+
+const APPS: { id: AppId; name: string; icon: string }[] = [
+  { id: "about", name: "about-me.txt", icon: "person" },
+  { id: featured.id, name: featured.name, icon: featured.icon },
+  ...projects.map((p) => ({ id: p.id, name: p.name, icon: p.icon })),
+]
+const appOf = (id: AppId) => APPS.find((a) => a.id === id)!
+
+const WINDOW_WIDTH = { about: 440, app: 600 }
+const LG = "(min-width: 1024px)"
+
+function reducedMotion() {
   return matchMedia("(prefers-reduced-motion: reduce)").matches
 }
 
-/** Shapes start as circles and settle into their own shape, one after another. */
-function useSettled(index: number) {
-  const [settled, setSettled] = useState(prefersReducedMotion)
+function useMedia(query: string) {
+  const [matches, setMatches] = useState(() => matchMedia(query).matches)
   useEffect(() => {
-    if (settled) return
-    const timer = setTimeout(() => setSettled(true), 250 + index * 110)
-    return () => clearTimeout(timer)
-  }, [index, settled])
-  return settled
+    const list = matchMedia(query)
+    const on = () => setMatches(list.matches)
+    list.addEventListener("change", on)
+    return () => list.removeEventListener("change", on)
+  }, [query])
+  return matches
 }
 
-export function App() {
+/** live width of an element, so the window area can stop where the icon columns start */
+function useWidth(ref: React.RefObject<HTMLElement | null>) {
+  const [width, setWidth] = useState(96)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const observer = new ResizeObserver(() => setWidth(el.offsetWidth))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [ref])
+  return width
+}
+
+/* ---------- full-screen screenshot preview ---------- */
+
+type Preview = { shots: Shot[]; index: number }
+const PreviewContext = createContext<(p: Preview) => void>(() => {})
+
+function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p: Preview | null) => void }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    const el = dialog.current
+    if (preview && el && !el.open) el.showModal()
+  }, [preview])
+  if (!preview) return null
+
+  const { shots, index } = preview
+  const shot = shots[index]
+  const many = shots.length > 1
+  const step = (by: number) => onChange({ shots, index: (index + by + shots.length) % shots.length })
+
   return (
-    <div className="min-h-dvh bg-surface text-on-surface">
-      <a
-        href="#work"
-        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-full focus:bg-primary focus:px-4 focus:py-2 focus:text-on-primary"
+    <dialog
+      ref={dialog}
+      aria-label="Screenshot"
+      onClose={() => onChange(null)}
+      onClick={(e) => e.target === e.currentTarget && dialog.current?.close()}
+      onKeyDown={(e) => {
+        if (many && e.key === "ArrowLeft") step(-1)
+        if (many && e.key === "ArrowRight") step(1)
+      }}
+      className="lightbox fixed inset-0 m-0 grid h-dvh max-h-none w-dvw max-w-none place-items-center bg-[#0d070b]/92 p-4 text-white backdrop:bg-transparent sm:p-10"
+    >
+      <figure className="pointer-events-none grid max-h-full justify-items-center gap-3">
+        <img
+          key={shot.src}
+          src={shot.src}
+          alt={shot.alt}
+          className="pointer-events-auto max-h-[calc(100dvh-8rem)] max-w-full rounded-lg object-contain shadow-[0_30px_80px_rgba(0,0,0,.6)]"
+        />
+        <figcaption className="pointer-events-auto max-w-2xl text-center text-[14px] text-white/75">
+          {shot.alt}
+          {many && <span className="ml-2 font-mono text-white/45">{index + 1}/{shots.length}</span>}
+        </figcaption>
+      </figure>
+      <button
+        type="button"
+        onClick={() => dialog.current?.close()}
+        aria-label="Close preview"
+        autoFocus
+        className="fixed top-4 right-4 grid size-11 place-items-center rounded-full bg-white/10 hover:bg-white/20"
       >
-        Skip to work
-      </a>
-      <TopBar />
-      <main className="mx-auto w-[min(1200px,calc(100%-2rem))]">
-        <Hero />
-        <Featured />
-        <Projects />
-        <Contact />
-      </main>
-      <footer className="mx-auto flex w-[min(1200px,calc(100%-2rem))] flex-wrap justify-between gap-2 border-t border-outline-variant py-6 font-mono text-label-medium text-on-surface-variant">
-        <span>© 2026 Rahmat Fajar</span>
-        <span>Built with React and shadcn-m3e</span>
-      </footer>
+        <Icon name="close" size={22} />
+      </button>
+      {many && (
+        <>
+          <button
+            type="button"
+            onClick={() => step(-1)}
+            aria-label="Previous screenshot"
+            className="fixed top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+          >
+            <Icon name="chevron_left" size={26} />
+          </button>
+          <button
+            type="button"
+            onClick={() => step(1)}
+            aria-label="Next screenshot"
+            className="fixed top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+          >
+            <Icon name="chevron_right" size={26} />
+          </button>
+        </>
+      )}
+    </dialog>
+  )
+}
+
+/* ---------- desktop ---------- */
+
+export function App() {
+  const wide = useMedia(LG)
+  const desk = useRef<HTMLDivElement>(null)
+  const icons = useRef<HTMLElement>(null)
+  const iconsWidth = useWidth(icons)
+  /** open windows, back to front */
+  const [stack, setStack] = useState<AppId[]>(["onecore", "about"])
+  const [hidden, setHidden] = useState<AppId[]>([])
+  const [pos, setPos] = useState<Partial<Record<AppId, Pos>>>({})
+  const [preview, setPreview] = useState<Preview | null>(null)
+  const [lyricsShown, setLyricsShown] = useState(true)
+  /** windows playing their close or minimize animation */
+  const [leaving, setLeaving] = useState<Partial<Record<AppId, Leave>>>({})
+
+  const focused = stack.filter((id) => !hidden.includes(id)).at(-1)
+
+  // starting layout: about on the left, the work window beside it, until the visitor moves something
+  const touched = useRef(false)
+  useLayoutEffect(() => {
+    if (touched.current) return
+    const w = desk.current?.clientWidth ?? 1280
+    const left = Math.max(0, Math.min(w * 0.02, 32))
+    setPos({
+      about: { x: left, y: 16 },
+      onecore: { x: Math.max(left + 48, Math.min(w - WINDOW_WIDTH.app, left + WINDOW_WIDTH.about + 40)), y: 64 },
+    })
+  }, [iconsWidth, wide])
+
+  const clamp = (id: AppId, p: Pos): Pos => {
+    const el = desk.current
+    if (!el) return p
+    const w = id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app
+    return {
+      x: Math.min(Math.max(p.x, 120 - w), el.clientWidth - 120),
+      y: Math.min(Math.max(p.y, 0), el.clientHeight - 48),
+    }
+  }
+
+  /** bring a window to the front without moving focus */
+  const raise = (id: AppId) => {
+    setHidden((h) => (h.includes(id) ? h.filter((x) => x !== id) : h))
+    setStack((s) => (s.at(-1) === id ? s : [...s.filter((x) => x !== id), id]))
+  }
+  const launch = (id: AppId) => {
+    touched.current = true
+    raise(id)
+    setPos((p) => {
+      if (p[id]) return p
+      const n = Object.keys(p).length
+      const w = desk.current?.clientWidth ?? 1280
+      return { ...p, [id]: clamp(id, { x: w * 0.22 + (n % 6) * 36, y: 20 + (n % 6) * 30 }) }
+    })
+    requestAnimationFrame(() => {
+      const win = document.querySelector<HTMLElement>(`[data-window="${id}"]`)
+      win?.focus({ preventScroll: true })
+      if (!matchMedia(LG).matches) win?.scrollIntoView({ behavior: reducedMotion() ? "auto" : "smooth", block: "start" })
+    })
+  }
+  const finishLeave = (id: AppId, how: Leave) => {
+    setLeaving(({ [id]: _, ...rest }) => rest)
+    if (how === "close") setStack((s) => s.filter((x) => x !== id))
+    else setHidden((h) => [...h, id])
+  }
+  const leave = (id: AppId, how: Leave) =>
+    reducedMotion() ? finishLeave(id, how) : setLeaving((l) => ({ ...l, [id]: how }))
+  const close = (id: AppId) => leave(id, "close")
+  const minimize = (id: AppId) => leave(id, "minimize")
+  const onTask = (id: AppId) => (id === focused && wide ? minimize(id) : launch(id))
+
+  return (
+    <PreviewContext value={setPreview}>
+      <div className="desktop relative flex min-h-dvh flex-col pt-8 text-(--desk-ink)">
+        <a
+          href="#desktop-icons"
+          className="sr-only z-[60] rounded-lg bg-[#C2185B] px-4 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
+        >
+          Skip to projects
+        </a>
+
+        <TopBar
+          stack={stack}
+          hidden={hidden}
+          focused={focused}
+          lyricsShown={lyricsShown}
+          onToggleLyrics={() => setLyricsShown((v) => !v)}
+          onLaunch={launch}
+          onTask={onTask}
+        />
+
+        <div className="relative flex w-full flex-1 flex-col gap-6 px-4 pt-4 pb-4 lg:block lg:min-h-[440px]">
+          {lyricsShown && (
+            <LyricsPill
+              onHide={() => setLyricsShown(false)}
+              className="w-full shrink-0 lg:fixed lg:right-4 lg:bottom-4 lg:z-40 lg:w-[480px]"
+            />
+          )}
+          <nav
+            id="desktop-icons"
+            ref={icons}
+            aria-label="Projects"
+            className="desktop-icons grid grid-cols-3 gap-1 sm:grid-cols-5 lg:absolute lg:inset-y-4 lg:left-3 lg:grid-flow-col lg:grid-cols-none"
+          >
+            {APPS.map((app) => (
+              <button
+                key={app.id}
+                type="button"
+                onClick={() => launch(app.id)}
+                className="group flex h-[5.5rem] w-full flex-col items-center gap-1.5 rounded-xl p-1.5 text-[12px] leading-tight transition-colors hover:bg-(--hover) focus-visible:bg-(--hover) lg:w-24"
+              >
+                <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-[#FBF8FA] text-[#C2185B] shadow-(--tile-shadow) transition-transform group-hover:-translate-y-0.5 motion-reduce:transition-none">
+                  {app.id === "about" ? <img src={AVATAR} alt="" className="size-full" /> : <Icon name={app.icon} size={26} />}
+                </span>
+                <span className="text-center font-medium [text-shadow:var(--label-shadow)]">{app.name}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div
+            ref={desk}
+            style={{ "--icons": `${iconsWidth}px` } as React.CSSProperties}
+            className="relative flex flex-col gap-4 lg:absolute lg:inset-y-4 lg:right-4 lg:left-[calc(var(--icons)+1.75rem)] lg:block"
+          >
+            {/* DOM order stays fixed so focusing a window never re-mounts it; the stack only sets z-index */}
+            {APPS.filter((a) => stack.includes(a.id)).map(({ id }) => (
+              <Window
+                key={id}
+                id={id}
+                active={id === focused}
+                hidden={hidden.includes(id)}
+                z={stack.indexOf(id) + 1}
+                order={stack.length - stack.indexOf(id)}
+                pos={pos[id] ?? { x: 0, y: 0 }}
+                onFocus={() => raise(id)}
+                onMove={(p) => {
+                  touched.current = true
+                  setPos((s) => ({ ...s, [id]: clamp(id, p) }))
+                }}
+                leaving={leaving[id]}
+                onLeft={() => finishLeave(id, leaving[id]!)}
+                onMinimize={() => minimize(id)}
+                onClose={() => close(id)}
+              />
+            ))}
+          </div>
+        </div>
+
+      </div>
+      <Lightbox preview={preview} onChange={setPreview} />
+    </PreviewContext>
+  )
+}
+
+function Window({
+  id,
+  active,
+  hidden,
+  z,
+  order,
+  pos,
+  onFocus,
+  onMove,
+  leaving,
+  onLeft,
+  onMinimize,
+  onClose,
+}: {
+  id: AppId
+  active: boolean
+  hidden: boolean
+  z: number
+  order: number
+  pos: Pos
+  onFocus: () => void
+  onMove: (p: Pos) => void
+  leaving: Leave | undefined
+  onLeft: () => void
+  onMinimize: () => void
+  onClose: () => void
+}) {
+  const app = appOf(id)
+  const drag = useRef<{ dx: number; dy: number } | null>(null)
+  const width = id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app
+
+  return (
+    <section
+      data-window={id}
+      tabIndex={-1}
+      aria-label={app.name}
+      hidden={hidden}
+      onPointerDown={onFocus}
+      onFocus={onFocus}
+      onKeyDown={(e) => e.key === "Escape" && onClose()}
+      onAnimationEnd={(e) => e.target === e.currentTarget && leaving && onLeft()}
+      style={{ "--x": `${pos.x}px`, "--y": `${pos.y}px`, "--w": `${width}px`, zIndex: z, order } as React.CSSProperties}
+      className={cn(
+        leaving === "close" ? "window-close" : leaving === "minimize" ? "window-minimize" : "window-in",
+        leaving && "pointer-events-none",
+        "flex scroll-mt-4 flex-col overflow-hidden rounded-xl bg-(--win) text-(--ink) outline-none",
+        "lg:absolute lg:top-[var(--y)] lg:left-[var(--x)] lg:max-h-[calc(100%-var(--y))] lg:w-[var(--w)]",
+        active
+          ? "shadow-[0_28px_70px_rgba(0,0,0,.45)] ring-1 ring-[#E91E63]/60"
+          : "shadow-[0_14px_36px_rgba(0,0,0,.3)] ring-1 ring-(--win-ring)"
+      )}
+    >
+      <div
+        className={cn(
+          "flex h-10 shrink-0 touch-none items-center gap-2 pr-1.5 pl-3.5 text-[13px] select-none lg:cursor-grab lg:active:cursor-grabbing",
+          active ? "bg-(--title)" : "bg-(--title-idle) text-(--muted)"
+        )}
+        onPointerDown={(e) => {
+          if ((e.target as HTMLElement).closest("button") || !matchMedia(LG).matches) return
+          drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }
+          e.currentTarget.setPointerCapture(e.pointerId)
+        }}
+        onPointerMove={(e) => drag.current && onMove({ x: e.clientX - drag.current.dx, y: e.clientY - drag.current.dy })}
+        onPointerUp={() => (drag.current = null)}
+        onPointerCancel={() => (drag.current = null)}
+      >
+        <Icon name={app.icon} size={16} className={active ? "text-(--accent-ink)" : undefined} />
+        <span className="flex-1 truncate font-medium">{app.name}</span>
+        <button
+          type="button"
+          onClick={onMinimize}
+          aria-label={`Minimize ${app.name}`}
+          className="hidden size-7 place-items-center rounded-full hover:bg-(--hover) lg:grid"
+        >
+          <Icon name="minimize" size={16} />
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={`Close ${app.name}`}
+          className="grid size-7 place-items-center rounded-full hover:bg-[#C2185B] hover:text-white"
+        >
+          <Icon name="close" size={16} />
+        </button>
+      </div>
+      <div className="min-h-0 overflow-auto overscroll-contain">
+        <WindowBody id={id} />
+      </div>
+    </section>
+  )
+}
+
+function WindowBody({ id }: { id: AppId }) {
+  if (id === "about") return <About />
+  if (id === featured.id)
+    return (
+      <>
+        <Shots shots={featured.shots} />
+        <div className="p-6">
+          <Meta>At work · {featured.role}</Meta>
+          <h2 className="mb-3 text-2xl font-[750] tracking-[-0.015em]">{featured.name}</h2>
+          <p className="mb-5 leading-relaxed text-(--ink-2)">{featured.description}</p>
+          <dl className="mb-6 grid gap-2">
+            {featured.facts.map((f) => (
+              <div key={f.value} className="flex items-baseline gap-3 rounded-lg bg-(--chip) px-3.5 py-2.5">
+                <dt className="shrink-0 font-mono font-semibold text-(--accent-ink)">{f.value}</dt>
+                <dd className="text-[14px] text-(--ink-2)">{f.label}</dd>
+              </div>
+            ))}
+          </dl>
+          <LinkButton href={featured.url}>Visit onecorecrm.com</LinkButton>
+          <p className="mt-3 text-[12px] text-(--muted)">Private code · screenshots use made-up data</p>
+        </div>
+      </>
+    )
+
+  const p = projects.find((x) => x.id === id)!
+  return (
+    <>
+      <Shots shots={shotsOf(p.media)} />
+      <div className="p-6">
+        <Meta>{p.platforms.map((x) => PLATFORM_LABEL[x]).join(" · ")}</Meta>
+        <h2 className="mb-1 text-2xl font-[750] tracking-[-0.015em]">{p.name}</h2>
+        <p className="mb-3 font-medium">{p.blurb}</p>
+        <p className="mb-4 leading-relaxed text-(--ink-2)">{p.description}</p>
+        <ul className="mb-6 flex flex-wrap gap-1.5" aria-label="Built with">
+          {p.tags.map((t) => (
+            <li key={t} className="rounded-md bg-(--chip) px-2 py-0.5 font-mono text-[12px] text-(--chip-ink)">
+              {t}
+            </li>
+          ))}
+        </ul>
+        <LinkButton href={p.repo}>{p.repo.replace("https://github.com/", "")}</LinkButton>
+      </div>
+    </>
+  )
+}
+
+function About() {
+  return (
+    <div className="p-6">
+      <div className="mb-5 flex items-center gap-4">
+        <img src={AVATAR} alt="Illustrated portrait of Rahmat with round glasses" className="size-20 rounded-2xl" />
+        <div>
+          <h2 className="text-2xl font-[750] tracking-[-0.015em]">Rahmat Fajar</h2>
+          <p className="font-mono text-[13px] text-(--muted)">uzuki-P · Medan, Indonesia</p>
+        </div>
+      </div>
+      <p className="mb-3 leading-relaxed text-(--ink-2)">
+        Lead frontend engineer with 8+ years of shipping products. At work I lead the frontend of OneCore CRM. After
+        hours I build Android apps, Linux desktop tools and small web services, mostly in Kotlin, Compose and
+        TypeScript.
+      </p>
+      <p className="mb-6 leading-relaxed text-(--ink-2)">
+        Every icon on this desktop opens one of them. I’m open to frontend, Kotlin and developer tooling work, remote
+        or in Medan.
+      </p>
+      <div className="flex flex-wrap gap-2 text-[14px] font-medium">
+        <a href={`mailto:${EMAIL}`} className="inline-flex items-center gap-2 rounded-lg bg-[#C2185B] px-3.5 py-2 text-white hover:bg-[#AD1457]">
+          <Icon name="mail" size={18} /> {EMAIL}
+        </a>
+        <a href={GITHUB} {...EXTERNAL} className="rounded-lg bg-(--chip) px-3.5 py-2 hover:bg-(--chip-hover)">
+          GitHub
+        </a>
+        <a href={LINKEDIN} {...EXTERNAL} className="rounded-lg bg-(--chip) px-3.5 py-2 hover:bg-(--chip-hover)">
+          LinkedIn
+        </a>
+      </div>
+      <p className="mt-6 text-[12px] text-(--muted)">© 2026 Rahmat Fajar</p>
     </div>
   )
 }
 
-function TopBar() {
-  return (
-    <header className="sticky top-0 z-40 bg-surface/85 backdrop-blur-md">
-      <div className="mx-auto flex h-16 w-[min(1200px,calc(100%-2rem))] items-center gap-2">
-        <a
-          href="#top"
-          className="mr-auto flex items-center gap-3 rounded-full focus-ring outline-none"
-        >
-          <Shape name="7-sided-cookie" className="grid size-9 place-items-center bg-primary text-on-primary">
-            <span className="text-title-small font-bold">RF</span>
-          </Shape>
-          <span className="text-title-medium-emphasized">uzuki-P</span>
-        </a>
-        <nav className="hidden items-center gap-1 sm:flex" aria-label="Sections">
-          {[
-            ["Work", "#work"],
-            ["Projects", "#projects"],
-            ["Contact", "#contact"],
-          ].map(([label, href]) => (
-            <Button key={href} variant="text" size="sm" nativeButton={false} render={<a href={href} />}>
-              {label}
-            </Button>
-          ))}
-        </nav>
-        <ThemeMenu />
-      </div>
-    </header>
-  )
+function Meta({ children }: { children: React.ReactNode }) {
+  return <p className="mb-1 font-mono text-[12px] text-(--muted)">{children}</p>
 }
 
-const MODE_ICON = { system: "brightness_auto", light: "light_mode", dark: "dark_mode" } as const
-
-function ThemeMenu() {
-  const { mode, setMode } = useColorMode()
+function LinkButton({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        render={
-          <Button variant="tonal" size="icon" aria-label={`Theme: ${mode}`}>
-            <Icon name={MODE_ICON[mode]} />
-          </Button>
-        }
-      />
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuRadioGroup value={mode} onValueChange={(value) => setMode(value as typeof mode)}>
-          <DropdownMenuLabel>Theme</DropdownMenuLabel>
-          <DropdownMenuRadioItem value="system" closeOnClick>
-            <Icon name="brightness_auto" /> System
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="light" closeOnClick>
-            <Icon name="light_mode" /> Light
-          </DropdownMenuRadioItem>
-          <DropdownMenuRadioItem value="dark" closeOnClick>
-            <Icon name="dark_mode" /> Dark
-          </DropdownMenuRadioItem>
-        </DropdownMenuRadioGroup>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  )
-}
-
-function Hero() {
-  const shelf = [
-    { id: featured.id, name: featured.name, shape: featured.shape, icon: featured.icon, tone: "primary" as Tone },
-    ...projects,
-  ]
-  return (
-    <section id="top" className="grid items-center gap-12 pt-14 pb-24 lg:grid-cols-[1.15fr_1fr] lg:pt-24 lg:pb-32">
-      <div>
-        <p className="mb-5 font-mono text-label-large text-primary">Rahmat Fajar · Medan, Indonesia</p>
-        <h1 className="mb-8 max-w-2xl text-display-medium-emphasized text-balance text-on-surface sm:text-display-large-emphasized">
-          Web and mobile apps, plus the small tools I use every day
-        </h1>
-        <p className="mb-10 max-w-xl text-body-large text-on-surface-variant sm:text-title-large sm:font-normal">
-          I’m a lead frontend engineer with 8+ years of shipping products. At work I lead the frontend of{" "}
-          <a href={featured.url} {...EXTERNAL} className="font-medium text-primary underline underline-offset-4">
-            OneCore CRM
-          </a>
-          . After hours I build in Kotlin, Compose and TypeScript.
-        </p>
-        <div className="flex flex-wrap gap-3">
-          <Button size="md" nativeButton={false} render={<a href={GITHUB} {...EXTERNAL} />}>
-            <Icon name="code" /> GitHub
-          </Button>
-          <Button size="md" variant="outlined" nativeButton={false} render={<a href={`mailto:${EMAIL}`} />}>
-            <Icon name="mail" /> Email me
-          </Button>
-        </div>
-      </div>
-
-      <nav aria-label="Jump to a project" className="mx-auto grid w-full max-w-md grid-cols-3 gap-4 sm:gap-5">
-        {shelf.map((item, index) => (
-          <ShelfTile key={item.id} index={index} {...item} />
-        ))}
-      </nav>
-    </section>
-  )
-}
-
-function ShelfTile({
-  id,
-  name,
-  shape,
-  icon,
-  tone,
-  index,
-}: {
-  id: string
-  name: string
-  shape: ShapeName
-  icon: string
-  tone: Tone
-  index: number
-}) {
-  const settled = useSettled(index)
-  const [active, setActive] = useState(false)
-  const current: ShapeName = !settled || active ? "circle" : shape
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <a
-            href={`#${id === featured.id ? "work" : `p-${id}`}`}
-            aria-label={name}
-            className="group block rounded-full focus-ring outline-none"
-            onPointerEnter={() => setActive(true)}
-            onPointerLeave={() => setActive(false)}
-            onFocus={() => setActive(true)}
-            onBlur={() => setActive(false)}
-          />
-        }
-      >
-        <Shape
-          name={current}
-          className={cn(
-            "grid size-full place-items-center transition-[clip-path,scale] motion-reduce:transition-none",
-            active && "scale-105",
-            TONE[tone]
-          )}
-        >
-          <Icon name={icon} className="size-[38%]" />
-        </Shape>
-      </TooltipTrigger>
-      <TooltipContent>{name}</TooltipContent>
-    </Tooltip>
-  )
-}
-
-function Featured() {
-  return (
-    <section id="work" className="mb-32 scroll-mt-20">
-      <SectionLabel>At work</SectionLabel>
-      <div className="grid gap-10 overflow-hidden rounded-3xl bg-surface-container p-6 sm:p-10 lg:grid-cols-[5fr_7fr] lg:items-center lg:p-14">
-        <div>
-          <div className="mb-6 flex items-center gap-4">
-            <Shape name={featured.shape} className="grid size-14 place-items-center bg-primary text-on-primary">
-              <Icon name={featured.icon} size={28} />
-            </Shape>
-            <div>
-              <h2 className="text-headline-large-emphasized">{featured.name}</h2>
-              <p className="text-label-large text-on-surface-variant">Lead Frontend Developer · since Jan 2026</p>
-            </div>
-          </div>
-          <p className="mb-8 text-body-large text-on-surface-variant">
-            A CRM that brings together leads, customers, PBX calling, an auto-dialer, WhatsApp and omnichannel inboxes,
-            ads reporting and billing. I lead the frontend architecture: 23 domain modules, 118 lazy-loaded routes, an
-            in-browser SIP/WebRTC softphone, English and Indonesian translations, and Playwright suites built on
-            schema-checked mocks.
-          </p>
-          <dl className="mb-10 grid gap-3">
-            {featured.facts.map((fact) => (
-              <div key={fact.value} className="rounded-lg bg-surface-container-high px-5 py-4">
-                <dt className="font-mono text-title-medium text-primary">{fact.value}</dt>
-                <dd className="text-body-medium text-on-surface-variant">{fact.label}</dd>
-              </div>
-            ))}
-          </dl>
-          <div className="flex flex-wrap items-center gap-4">
-            <Button size="md" nativeButton={false} render={<a href={featured.url} {...EXTERNAL} />}>
-              Visit onecorecrm.com <Icon name="arrow_outward" />
-            </Button>
-            <span className="text-label-medium text-on-surface-variant">Private code · screenshots use made-up data</span>
-          </div>
-        </div>
-        <div className="relative aspect-[16/12]">
-          <BrowserFrame className="absolute top-0 right-0 w-[86%] rotate-2" src={featured.shots[1]} />
-          <BrowserFrame className="absolute bottom-0 left-0 w-[86%] -rotate-1" src={featured.shots[0]} />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function BrowserFrame({ src, className }: { src: { src: string; alt: string }; className?: string }) {
-  return (
-    <figure className={cn("overflow-hidden rounded-lg bg-surface-container-lowest shadow-elevation-3", className)}>
-      <div className="flex h-6 items-center gap-1.5 bg-surface-container-highest px-3" aria-hidden>
-        <span className="size-2.5 rounded-full bg-error" />
-        <span className="size-2.5 rounded-full bg-tertiary" />
-        <span className="size-2.5 rounded-full bg-primary" />
-      </div>
-      <img src={src.src} alt={src.alt} width={1440} height={900} className="block h-auto w-full" />
-    </figure>
-  )
-}
-
-type Filter = "all" | Platform
-
-function Projects() {
-  const [filter, setFilter] = useState<Filter>("all")
-  const shown = filter === "all" ? projects : projects.filter((p) => p.platforms.includes(filter))
-  const filters: Filter[] = ["all", "android", "desktop", "web"]
-  return (
-    <section id="projects" className="mb-32 scroll-mt-20">
-      <SectionLabel>Side projects</SectionLabel>
-      <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
-        <h2 className="max-w-2xl text-display-small-emphasized">Open source tools I built for myself</h2>
-        <div role="group" aria-label="Filter by platform" className="flex flex-wrap gap-2">
-          {filters.map((value) => (
-            <FilterChip
-              key={value}
-              pressed={filter === value}
-              onPressedChange={() => setFilter(value)}
-            >
-              {value === "all" ? "All" : PLATFORM_LABEL[value]}
-            </FilterChip>
-          ))}
-        </div>
-      </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        {shown.map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-      </div>
-    </section>
-  )
-}
-
-function ProjectCard({ project }: { project: Project }) {
-  const [hover, setHover] = useState(false)
-  return (
-    <Card
-      id={`p-${project.id}`}
-      className="scroll-mt-24 gap-0 rounded-2xl py-0"
-      onPointerEnter={() => setHover(true)}
-      onPointerLeave={() => setHover(false)}
+    <a
+      href={href}
+      {...EXTERNAL}
+      className="inline-flex items-center gap-1.5 rounded-lg bg-[#C2185B] px-3.5 py-2 text-[14px] font-medium text-white hover:bg-[#AD1457]"
     >
-      <ProjectMedia media={project.media} tone={project.tone} />
-      <div className="flex flex-1 flex-col gap-4 p-6 sm:p-7">
-        <div className="flex items-center gap-4">
-          <Shape
-            name={hover ? "circle" : project.shape}
-            className={cn("grid size-12 place-items-center motion-reduce:transition-none", TONE[project.tone])}
-          >
-            <Icon name={project.icon} size={24} />
-          </Shape>
-          <div className="min-w-0">
-            <h3 className="text-headline-small-emphasized">{project.name}</h3>
-            <p className="text-label-large text-on-surface-variant">
-              {project.platforms.map((p) => PLATFORM_LABEL[p]).join(" · ")}
-            </p>
-          </div>
-        </div>
-        <p className="text-title-medium">{project.blurb}</p>
-        <p className="text-body-medium text-on-surface-variant">{project.description}</p>
-        <ul className="flex flex-wrap gap-2" aria-label="Built with">
-          {project.tags.map((tag) => (
-            <li key={tag} className="rounded-sm bg-surface-container-high px-2.5 py-1 font-mono text-label-medium text-on-surface-variant">
-              {tag}
-            </li>
-          ))}
-        </ul>
-        <div className="mt-auto pt-2">
-          <Button variant="tonal" nativeButton={false} render={<a href={project.repo} {...EXTERNAL} />}>
-            <Icon name="code" /> {project.repo.replace("https://github.com/", "")}
-          </Button>
-        </div>
-      </div>
-    </Card>
+      {children} <Icon name="arrow_outward" size={16} />
+    </a>
   )
 }
 
-function ProjectMedia({ media, tone }: { media: Media; tone: Tone }) {
-  if (media.kind === "pair") {
-    return (
-      <div className={cn("flex h-80 justify-center gap-4 overflow-hidden px-6 pt-8 sm:h-96", TONE[tone])}>
-        {media.shots.map((s, i) => (
-          <img
-            key={s.src}
-            src={s.src}
-            alt={s.alt}
-            className={cn(
-              "w-[42%] rounded-t-[28px] object-cover object-top shadow-elevation-3 ring-6 ring-on-surface/90",
-              i === 1 && "mt-10"
-            )}
-          />
-        ))}
-      </div>
-    )
-  }
-  if (media.kind === "window") {
-    return (
-      <div className={cn("overflow-hidden px-6 pt-6 sm:px-8 sm:pt-8", TONE[tone])}>
-        <img
-          src={media.shot.src}
-          alt={media.shot.alt}
-          className="aspect-[16/10] w-full rounded-t-lg object-cover object-top-left shadow-elevation-3"
-        />
-      </div>
-    )
-  }
-  if (media.kind === "desktop") {
-    return (
-      <div className="stage relative h-80 overflow-hidden sm:h-96">
-        <img
-          src={media.app.src}
-          alt={media.app.alt}
-          className="absolute top-[12%] left-[7%] h-auto w-[36%] drop-shadow-xl"
-        />
-        <img
-          src={media.notification.src}
-          alt={media.notification.alt}
-          className="absolute top-4 right-4 h-auto w-[50%] drop-shadow-xl"
-        />
-        <div aria-hidden className="absolute inset-x-0 bottom-0 h-7 bg-black/45 backdrop-blur-sm" />
-      </div>
-    )
-  }
+function Shots({ shots }: { shots: Shot[] }) {
+  const preview = use(PreviewContext)
   return (
-    <div
-      className={cn(
-        "stage flex h-80 items-center justify-center gap-4 overflow-hidden p-6 sm:h-96",
-        media.layout === "stack" && "flex-col justify-start pt-8"
-      )}
-    >
-      {media.shots.map((s, i) => (
-        <img
+    <div className="flex items-center justify-center gap-3 bg-[#1A1016] p-4">
+      {shots.map((s, index) => (
+        <button
           key={s.src}
-          src={s.src}
-          alt={s.alt}
-          className={cn(
-            "h-auto drop-shadow-xl",
-            media.layout === "row" && (i === 0 ? "w-[56%]" : "w-[34%] rounded-xl"),
-            media.layout === "stack" && (i === 0 ? "w-[92%]" : "w-[58%]")
-          )}
-        />
+          type="button"
+          onClick={() => preview({ shots, index })}
+          aria-label={`View full size: ${s.alt}`}
+          className="group relative min-w-0 cursor-zoom-in rounded-md"
+        >
+          <img src={s.src} alt="" loading="lazy" className="max-h-72 rounded-md object-contain" />
+          <span
+            aria-hidden
+            className="absolute right-2 bottom-2 grid size-8 place-items-center rounded-full bg-black/60 text-white opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100"
+          >
+            <Icon name="open_in_full" size={16} />
+          </span>
+        </button>
       ))}
     </div>
   )
 }
 
-function Contact() {
-  return (
-    <section id="contact" className="mb-24 scroll-mt-20">
-      <div className="relative grid gap-10 overflow-hidden rounded-3xl bg-primary-container p-8 text-on-primary-container sm:p-14 md:grid-cols-[1fr_auto] md:items-center">
-        <div>
-          <h2 className="mb-4 text-display-medium-emphasized">Let’s work together</h2>
-          <p className="mb-8 max-w-lg text-title-medium font-normal">
-            I’m open to frontend, Kotlin and developer tooling work, remote or in Medan.
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <Button size="md" nativeButton={false} render={<a href={`mailto:${EMAIL}`} />}>
-              <Icon name="mail" /> {EMAIL}
-            </Button>
-            <Button size="md" variant="tonal" nativeButton={false} render={<a href={GITHUB} {...EXTERNAL} />}>
-              <Icon name="code" /> GitHub
-            </Button>
-            <Button size="md" variant="tonal" nativeButton={false} render={<a href={LINKEDIN} {...EXTERNAL} />}>
-              <Icon name="work" /> LinkedIn
-            </Button>
-          </div>
-        </div>
-        <Shape
-          name="very-sunny"
-          aria-hidden
-          className="contact-spin hidden size-56 place-items-center bg-primary text-on-primary md:grid"
-        >
-          <Icon name="waving_hand" size={72} />
-        </Shape>
-      </div>
-    </section>
-  )
+function useClock() {
+  const read = () => {
+    const now = new Date()
+    const opts = { timeZone: "Asia/Jakarta" } as const
+    return {
+      time: new Intl.DateTimeFormat("en-GB", { ...opts, hour: "2-digit", minute: "2-digit" }).format(now),
+      date: new Intl.DateTimeFormat("en-GB", { ...opts, weekday: "long", day: "numeric", month: "long" }).format(now),
+    }
+  }
+  const [clock, setClock] = useState(read)
+  useEffect(() => {
+    const timer = setInterval(() => setClock(read()), 10_000)
+    return () => clearInterval(timer)
+  }, [])
+  return clock
 }
 
-function SectionLabel({ children }: { children: React.ReactNode }) {
+function TopBar({
+  stack,
+  hidden,
+  focused,
+  lyricsShown,
+  onToggleLyrics,
+  onLaunch,
+  onTask,
+}: {
+  stack: AppId[]
+  hidden: AppId[]
+  focused: AppId | undefined
+  lyricsShown: boolean
+  onToggleLyrics: () => void
+  onLaunch: (id: AppId) => void
+  onTask: (id: AppId) => void
+}) {
+  const clock = useClock()
+  const tray = "grid size-7 shrink-0 place-items-center rounded-md hover:bg-(--hover)"
   return (
-    <p className="mb-6 flex items-center gap-3 font-mono text-label-large text-on-surface-variant after:h-px after:flex-1 after:bg-outline-variant">
-      {children}
-    </p>
+    <header className="fixed inset-x-0 top-0 z-50 flex h-8 items-center gap-1 border-b border-(--panel-line) bg-(--panel) px-2 text-[12.5px] text-(--panel-ink) backdrop-blur-xl">
+      <button type="button" onClick={() => onLaunch("about")} aria-label="Open about me" className={cn(tray, "hidden md:grid")}>
+        <img src={AVATAR} alt="" className="size-5 rounded-full" />
+      </button>
+      <div className="hidden min-w-0 flex-1 gap-1 overflow-x-auto md:flex" aria-label="Open windows" role="group">
+        {APPS.filter((a) => stack.includes(a.id)).map((a) => (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onTask(a.id)}
+            aria-pressed={a.id === focused}
+            className={cn(
+              "flex h-7 shrink-0 items-center gap-1.5 rounded-md px-2.5 hover:bg-(--hover)",
+              a.id === focused && "bg-(--hover) shadow-[inset_0_-1.5px_0_var(--accent-line)]",
+              hidden.includes(a.id) && "opacity-55"
+            )}
+          >
+            <Icon name={a.icon} size={15} />
+            <span className="hidden sm:inline">{a.name}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mx-1 flex min-w-0 flex-1 justify-center md:flex-none">
+        <WavePill avatar={AVATAR} lyricsShown={lyricsShown} onToggleLyrics={onToggleLyrics} />
+      </div>
+      <ThemeMenu triggerClassName={tray} />
+      <a href={GITHUB} {...EXTERNAL} aria-label="GitHub" className={cn(tray, "hidden sm:grid")}>
+        <Icon name="code" size={16} />
+      </a>
+      <a href={`mailto:${EMAIL}`} aria-label="Email" className={cn(tray, "hidden sm:grid")}>
+        <Icon name="mail" size={16} />
+      </a>
+      <WeatherMenu triggerClassName="flex h-7 shrink-0 items-center gap-1 rounded-md px-2 hover:bg-(--hover)" />
+      <time className="shrink-0 px-2 font-mono tabular-nums" title={`${clock.date}, Medan (WIB)`}>
+        {clock.time} <span className="text-(--muted-panel)">WIB</span>
+      </time>
+    </header>
   )
 }

@@ -1,5 +1,3 @@
-import type { ShapeName } from "@/components/m3e/shape"
-
 export type Platform = "android" | "desktop" | "web"
 
 export type Media =
@@ -10,8 +8,6 @@ export type Media =
 
 export type Shot = { src: string; alt: string }
 
-export type Tone = "primary" | "secondary" | "tertiary"
-
 export type Project = {
   id: string
   name: string
@@ -20,9 +16,7 @@ export type Project = {
   platforms: Platform[]
   tags: string[]
   repo: string
-  shape: ShapeName
   icon: string
-  tone: Tone
   media: Media
 }
 
@@ -40,9 +34,11 @@ export const PLATFORM_LABEL: Record<Platform, string> = {
 export const featured = {
   id: "onecore",
   name: "OneCore CRM",
-  shape: "12-sided-cookie" as ShapeName,
   icon: "support_agent",
+  role: "Lead Frontend Developer · since Jan 2026",
   url: "https://onecorecrm.com",
+  description:
+    "A CRM that brings together leads, customers, PBX calling, an auto-dialer, WhatsApp and omnichannel inboxes, ads reporting and billing. I lead the frontend architecture: 23 domain modules, 118 lazy-loaded routes, an in-browser SIP/WebRTC softphone, English and Indonesian translations, and Playwright suites built on schema-checked mocks.",
   shots: [
     shot("capital-crm-dashboard", "OneCore CRM dashboard with lead conversion stats and top performers"),
     shot("capital-crm-leads", "OneCore CRM Lead Centre list with SLA status, filters and summary tiles"),
@@ -64,9 +60,7 @@ export const projects: Project[] = [
     platforms: ["web"],
     tags: ["TanStack Start", "React", "Drizzle", "libSQL"],
     repo: "https://github.com/uzuki-P/tabquest",
-    shape: "burst",
     icon: "receipt_long",
-    tone: "tertiary",
     media: { kind: "window", shot: shot("tabquest-home", "TabQuest month view with unpaid splits and the player leaderboard") },
   },
   {
@@ -78,9 +72,7 @@ export const projects: Project[] = [
     platforms: ["android"],
     tags: ["Kotlin", "Jetpack Compose", "Material 3"],
     repo: "https://github.com/uzuki-P/spendr-kt",
-    shape: "4-sided-cookie",
     icon: "account_balance_wallet",
-    tone: "primary",
     media: {
       kind: "pair",
       shots: [
@@ -98,9 +90,7 @@ export const projects: Project[] = [
     platforms: ["desktop"],
     tags: ["Compose Desktop", "D-Bus", "SQLite"],
     repo: "https://github.com/uzuki-P/pray-time",
-    shape: "sunny",
     icon: "schedule",
-    tone: "secondary",
     media: {
       kind: "desktop",
       app: shot("pray-time", "Pray Time popup with the next-prayer countdown and today’s checklist"),
@@ -116,9 +106,7 @@ export const projects: Project[] = [
     platforms: ["android", "desktop"],
     tags: ["Kotlin", "M3 Expressive", "WorkManager"],
     repo: "https://github.com/uzuki-P/gokapi-app",
-    shape: "puffy",
     icon: "cloud_upload",
-    tone: "primary",
     media: { kind: "window", shot: shot("gokapi", "Gokapi desktop client listing recent files with filters and an upload button") },
   },
   {
@@ -130,9 +118,7 @@ export const projects: Project[] = [
     platforms: ["desktop"],
     tags: ["Compose Desktop", "MPRIS", "Wayland"],
     repo: "https://github.com/uzuki-P/lyrics-float",
-    shape: "flower",
     icon: "lyrics",
-    tone: "tertiary",
     media: {
       kind: "stage",
       layout: "row",
@@ -151,9 +137,7 @@ export const projects: Project[] = [
     platforms: ["desktop"],
     tags: ["QML", "Plasma 6", "CAVA"],
     repo: "https://github.com/uzuki-P/plasma-wave-player",
-    shape: "soft-burst",
     icon: "graphic_eq",
-    tone: "secondary",
     media: {
       kind: "stage",
       layout: "stack",
@@ -172,9 +156,7 @@ export const projects: Project[] = [
     platforms: ["web"],
     tags: ["Bun", "Effect", "Solid"],
     repo: "https://github.com/uzuki-P/vision-api",
-    shape: "gem",
     icon: "visibility",
-    tone: "primary",
     media: { kind: "window", shot: shot("vision-api", "Vision API playground with an uploaded image and the model’s JSON result") },
   },
   {
@@ -186,9 +168,13 @@ export const projects: Project[] = [
     platforms: ["web"],
     tags: ["Chrome extension", "CSS Highlights"],
     repo: "https://github.com/uzuki-P/viewport-find",
-    shape: "pentagon",
     icon: "find_in_page",
-    tone: "secondary",
     media: { kind: "window", shot: shot("viewport-find", "Viewport Find bar highlighting matches for “state” on a page") },
   },
 ]
+
+export function shotsOf(media: Media): Shot[] {
+  if (media.kind === "window") return [media.shot]
+  if (media.kind === "desktop") return [media.app, media.notification]
+  return media.shots
+}
