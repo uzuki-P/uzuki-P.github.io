@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Rahmat Fajar · Frontend & app developer</title>
+    <meta name="description" content="Rahmat Fajar (uzuki-P): lead frontend engineer on OneCore CRM, plus Kotlin, Compose and web side projects." />
+    <meta property="og:title" content="Rahmat Fajar · Portfolio" />
+    <meta property="og:description" content="Lead frontend engineer. A CRM at work; Kotlin apps, Linux desktop tools and web projects on the side." />
+    <meta property="og:type" content="website" />
+    <script>
+      // apply the color mode before first paint; "color-mode" is ColorModeProvider's storageKey
+      try {
+        const m = localStorage.getItem("color-mode") || "system"
+        const dark = m === "dark" || (m === "system" && matchMedia("(prefers-color-scheme: dark)").matches)
+        document.documentElement.classList.add(dark ? "dark" : "light")
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2E9479"/>
+      <stop offset="1" stop-color="#123F35"/>
+    </linearGradient>
+    <linearGradient id="hood" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F6C25C"/>
+      <stop offset="1" stop-color="#E09A2C"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <circle cx="256" cy="236" r="196" fill="#ffffff" opacity="0.07"/>
+  <!-- hoodie -->
+  <path d="M70 512 C 74 418 150 368 256 368 C 362 368 438 418 442 512 Z" fill="url(#hood)"/>
+  <!-- neck -->
+  <path d="M222 318 L290 318 L294 384 C 276 398 236 398 218 384 Z" fill="#D9A57E"/>
+  <!-- hood collar -->
+  <path d="M176 384 C 200 362 220 360 256 404 C 292 360 312 362 336 384 C 316 420 290 432 256 432 C 222 432 196 420 176 384 Z" fill="#C9831F"/>
+  <!-- drawstrings -->
+  <path d="M232 420 L226 468 M280 420 L286 468" stroke="#FFF1D2" stroke-width="7" stroke-linecap="round"/>
+  <!-- ears -->
+  <circle cx="160" cy="246" r="24" fill="#E9B48B"/>
+  <circle cx="352" cy="246" r="24" fill="#E9B48B"/>
+  <!-- head -->
+  <ellipse cx="256" cy="236" rx="98" ry="110" fill="#F2C39B"/>
+  <!-- hair -->
+  <path d="M152 244 C 134 150 186 92 258 92 C 334 92 384 146 360 244 C 352 206 340 184 322 170 C 300 186 262 190 232 178 C 214 190 186 196 166 192 C 158 208 154 224 152 244 Z" fill="#2A211D"/>
+  <path d="M232 178 C 246 160 262 150 286 146" stroke="#3E322B" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- cheeks -->
+  <circle cx="196" cy="290" r="15" fill="#EE9C86" opacity="0.55"/>
+  <circle cx="316" cy="290" r="15" fill="#EE9C86" opacity="0.55"/>
+  <!-- eyes -->
+  <circle cx="212" cy="248" r="10" fill="#2A211D"/>
+  <circle cx="300" cy="248" r="10" fill="#2A211D"/>
+  <!-- glasses -->
+  <g stroke="#1A1A1A" stroke-width="13" stroke-linejoin="round">
+    <circle cx="210" cy="246" r="44" fill="#D8F2EC" fill-opacity="0.18"/>
+    <circle cx="302" cy="246" r="44" fill="#D8F2EC" fill-opacity="0.18"/>
+    <path d="M248 238 Q 256 228 264 238" fill="none"/>
+    <path d="M166 240 L150 234 M346 240 L362 234" fill="none" stroke-linecap="round"/>
+  </g>
+  <path d="M186 228 L200 214 M318 228 L332 214" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity="0.85"/>
+  <!-- smile -->
+  <path d="M232 306 Q 256 326 280 306" stroke="#7A3B2A" stroke-width="8" fill="none" stroke-linecap="round"/>
+</svg>

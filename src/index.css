@@ -1,0 +1,42 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource-variable/roboto-flex/standard.css";
+@import "@fontsource-variable/jetbrains-mono";
+@import "./lib/m3e/m3e.css";
+
+@custom-variant dark (&:is(.dark *));
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* Linux desktop shots sit on a dark "wallpaper" tinted from the theme's primary color. */
+.stage {
+  background:
+    radial-gradient(60% 70% at 25% 20%, color-mix(in oklab, var(--color-tertiary) 35%, transparent), transparent),
+    radial-gradient(60% 70% at 85% 90%, color-mix(in oklab, var(--color-primary) 40%, transparent), transparent),
+    color-mix(in oklab, var(--color-primary) 18%, #0b0d0c);
+}
+
+.contact-spin {
+  animation: contact-spin 40s linear infinite;
+}
+.contact-spin > * {
+  animation: contact-spin 40s linear infinite reverse;
+}
+@keyframes contact-spin {
+  to {
+    rotate: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .contact-spin,
+  .contact-spin > * {
+    animation: none;
+  }
+}
