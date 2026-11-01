@@ -220,10 +220,29 @@ export function App() {
     if (!el) return p
     const w = Math.min(id === "about" ? WINDOW_WIDTH.about : WINDOW_WIDTH.app, el.clientWidth)
     return {
-      x: Math.min(Math.max(p.x, 120 - w), el.clientWidth - 120),
+      x: Math.min(Math.max(p.x, 0), el.clientWidth - w),
       y: Math.min(Math.max(p.y, 0), el.clientHeight - 48),
     }
   }
+
+  // keep every window inside the desk when it shrinks (browser resize, icon grid reflow)
+  useEffect(() => {
+    const el = desk.current
+    if (!el) return
+    const ro = new ResizeObserver(() =>
+      setPos((s) => {
+        let changed = false
+        const next = { ...s }
+        for (const [id, p] of Object.entries(s) as [AppId, Pos][]) {
+          const c = clamp(id, p)
+          if (c.x !== p.x || c.y !== p.y) (next[id] = c), (changed = true)
+        }
+        return changed ? next : s
+      })
+    )
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [wide])
 
   /** bring a window to the front without moving focus */
   const raise = (id: AppId) => {
@@ -254,7 +273,7 @@ export function App() {
 
   return (
     <PreviewContext value={setPreview}>
-      <div className="desktop relative flex min-h-dvh flex-col pt-12 text-(--desk-ink) lg:pt-8">
+      <div className="desktop relative flex min-h-dvh flex-col overflow-x-clip pt-12 text-(--desk-ink) lg:pt-8">
         <a
           href="#desktop-icons"
           className="sr-only z-[60] rounded-lg bg-[#C2185B] px-4 py-2 text-white focus:not-sr-only focus:fixed focus:top-3 focus:left-3"
