@@ -105,7 +105,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
         onClick={() => dialog.current?.close()}
         aria-label="Close preview"
         autoFocus
-        className="fixed top-4 right-4 grid size-11 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+        className="fixed top-4 right-4 grid size-11 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
       >
         <Icon name="close" size={22} />
       </button>
@@ -115,7 +115,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
             type="button"
             onClick={() => step(-1)}
             aria-label="Previous screenshot"
-            className="fixed top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+            className="fixed top-1/2 left-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
           >
             <Icon name="chevron_left" size={26} />
           </button>
@@ -123,7 +123,7 @@ function Lightbox({ preview, onChange }: { preview: Preview | null; onChange: (p
             type="button"
             onClick={() => step(1)}
             aria-label="Next screenshot"
-            className="fixed top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-white/10 hover:bg-white/20"
+            className="fixed top-1/2 right-3 grid size-11 -translate-y-1/2 place-items-center rounded-full bg-black/60 shadow-[0_2px_12px_rgba(0,0,0,.5)] ring-1 ring-white/30 backdrop-blur-sm hover:bg-black/80"
           >
             <Icon name="chevron_right" size={26} />
           </button>
@@ -584,9 +584,9 @@ function WindowBody({ id }: { id: AppId }) {
           ))}
         </ul>
         <div className="flex flex-wrap gap-2">
-          {p.site && <LinkButton href={p.site}>Open {new URL(p.site).host}</LinkButton>}
-          <LinkButton href={p.repo} quiet={!!p.site}>
-            {p.repo.replace("https://github.com/", "")}
+          {p.site && <LinkButton href={p.site}>Visit {new URL(p.site).host}</LinkButton>}
+          <LinkButton href={p.repo} source>
+            Source on GitHub
           </LinkButton>
         </div>
       </div>
@@ -633,17 +633,21 @@ function Meta({ children }: { children: React.ReactNode }) {
   return <p className="mb-1 font-mono text-[12px] text-(--muted)">{children}</p>
 }
 
-/** An external link button; `quiet` is the secondary style, for a second link beside the main one. */
-function LinkButton({ href, quiet, children }: { href: string; quiet?: boolean; children: React.ReactNode }) {
+/**
+ * An external link button. A live site is always the filled pink button; `source` (the GitHub repo) is
+ * always the quiet chip with a code icon, so each style means the same destination on every project.
+ */
+function LinkButton({ href, source, children }: { href: string; source?: boolean; children: React.ReactNode }) {
   return (
     <a
       href={href}
       {...EXTERNAL}
       className={cn(
         "inline-flex items-center gap-1.5 rounded-lg px-3.5 py-2 text-[14px] font-medium",
-        quiet ? "bg-(--chip) hover:bg-(--chip-hover)" : "bg-[#C2185B] text-white hover:bg-[#AD1457]"
+        source ? "bg-(--chip) hover:bg-(--chip-hover)" : "bg-[#C2185B] text-white hover:bg-[#AD1457]"
       )}
     >
+      {source && <Icon name="code" size={16} />}
       {children} <Icon name="arrow_outward" size={16} />
     </a>
   )
